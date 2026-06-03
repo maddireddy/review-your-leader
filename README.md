@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ReviewYourLeader 🗺️
+
+> Know Your Indian Political Representatives — from State to Constituency level
+
+A sophisticated full-stack political intelligence platform featuring an interactive India map drill-down with AI-powered insights on MPs and MLAs.
+
+## Features
+
+- 🗺️ **Interactive India Map** — Color-coded by ruling party, zoomable, state capitals marked
+- 🔍 **Drill-Down Navigation** — State → District → Constituency → Representative
+- 👤 **Rich Profiles** — Performance stats, attendance, tenure history, ministry portfolios
+- 🤖 **AI Insights** — Claude Haiku-powered Q&A about any leader
+- 🔎 **Semantic Search** — Voyage AI embeddings + Supabase pgvector
+- 📊 **Analytics** — PostHog product analytics
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 15 + React 19 + Tailwind CSS |
+| Map | react-simple-maps + D3 |
+| Database | Supabase (PostgreSQL + pgvector) |
+| AI Chat | Anthropic Claude Haiku |
+| Embeddings | Voyage AI voyage-3-lite |
+| Analytics | PostHog |
+| Hosting | Vercel (Mumbai region) |
+| Domain | Hostinger → reviewyourleader.com |
+| CI/CD | GitHub Actions → Vercel auto-deploy |
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Install
+npm install --legacy-peer-deps
+
+# Configure env
+cp .env.example .env.local
+# Edit .env.local with your API keys
+
+# Run
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Source |
+|----------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API |
+| `ANTHROPIC_API_KEY` | console.anthropic.com |
+| `VOYAGE_API_KEY` | dash.voyageai.com |
+| `NEXT_PUBLIC_POSTHOG_KEY` | app.posthog.com |
 
-## Learn More
+## Supabase Setup
 
-To learn more about Next.js, take a look at the following resources:
+1. Create project at [supabase.com](https://supabase.com) (free tier)
+2. SQL Editor → paste contents of `supabase/schema.sql` → Run
+3. Schema creates all tables, pgvector HNSW index, and RLS policies
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment to Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Push to GitHub
+2. Import at [vercel.com](https://vercel.com/new) 
+3. Add environment variables in Vercel dashboard
+4. Vercel auto-deploys on every push to `main`
 
-## Deploy on Vercel
+**Region**: Set to `bom1` (Mumbai) in `vercel.json` for lowest India latency.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Custom Domain (Hostinger)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Buy `reviewyourleader.com` on Hostinger
+2. Vercel → Project → Domains → Add domain
+3. Copy Vercel nameservers → Paste into Hostinger DNS management
+4. SSL auto-provisioned within minutes
+
+## Database Schema
+
+```
+states → districts → constituencies → representatives
+                                           ↓
+                                       ministries
+                                       tenure_records
+                                       (embedding vector)
+```
