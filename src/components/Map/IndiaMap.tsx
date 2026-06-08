@@ -9,7 +9,7 @@ import {
   ZoomableGroup,
 } from 'react-simple-maps';
 import { motion, AnimatePresence } from 'framer-motion';
-import { INDIA_STATES } from '@/lib/indiaData';
+import { INDIA_STATES, StateInfo } from '@/lib/indiaData';
 import { State } from '@/types';
 import { trackEvent } from '@/lib/posthog';
 
@@ -18,6 +18,10 @@ const INDIA_TOPO_URL = '/india-states.json';
 interface TooltipState {
   x: number;
   y: number;
+  cm?: string;
+  party?: string;
+  landmark?: string;
+  landmarkEmoji?: string;
   name: string;
   capital: string;
 }
@@ -27,35 +31,13 @@ interface IndiaMapProps {
   selectedState?: State;
 }
 
-const STATE_COLOR_MAP: Record<string, string> = {
-  BJP: '#FF6B00',
-  INC: '#19AAED',
-  AAP: '#0066FF',
-  TMC: '#267EC2',
-  SP: '#CC0000',
-  BSP: '#1B7F4F',
-  DMK: '#CC0000',
-  AIADMK: '#00AF12',
-  YSRCP: '#0073B1',
-  TDP: '#FFD700',
-  default: '#4f46e5',
-};
-
-// Simplified ruling party map for visual differentiation
-const STATE_PARTIES: Record<string, string> = {
-  AP: 'TDP', AR: 'BJP', AS: 'BJP', BR: 'BJP', CG: 'BJP', GA: 'BJP',
-  GJ: 'BJP', HR: 'BJP', HP: 'INC', JH: 'BJP', KA: 'INC', KL: 'default',
-  MP: 'BJP', MH: 'BJP', MN: 'BJP', ML: 'default', MZ: 'default', NL: 'BJP',
-  OD: 'BJP', PB: 'AAP', RJ: 'BJP', SK: 'default', TN: 'DMK', TG: 'INC',
-  TR: 'BJP', UP: 'BJP', UK: 'BJP', WB: 'TMC', DL: 'AAP', JK: 'BJP',
-};
 
 function getStateColor(stateId: string, isSelected: boolean, isHovered: boolean) {
-  const party = STATE_PARTIES[stateId] || 'default';
-  const base = STATE_COLOR_MAP[party] || STATE_COLOR_MAP.default;
+  const state = INDIA_STATES.find(s => s.id === stateId) as StateInfo | undefined;
+  const base = state?.cm_party_color || '#4f46e5';
   if (isSelected) return '#818cf8';
-  if (isHovered) return base + 'dd';
-  return base + '55';
+  if (isHovered) return base + 'cc';
+  return base + '44';
 }
 
 export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
@@ -86,11 +68,16 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
       if (state) {
         setHoveredState(state.id);
         const rect = containerRef.current?.getBoundingClientRect();
+        const si = state as StateInfo;
         setTooltip({
           x: evt.clientX - (rect?.left || 0) + 12,
           y: evt.clientY - (rect?.top || 0) - 10,
           name: state.name,
           capital: state.capital,
+          cm: si.chief_minister,
+          party: si.ruling_party,
+          landmark: si.landmark,
+          landmarkEmoji: si.landmark_emoji,
         });
       }
     },
@@ -110,10 +97,17 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            <div className="font-semibold text-white">{tooltip.name}</div>
-            <div className="text-slate-400 text-xs mt-0.5">
-              🏛 Capital: {tooltip.capital}
-            </div>
+            <div className="font-semibold text-white text-sm">{tooltip.name}</div>
+            <div className="text-slate-400 text-xs mt-0.5">🏛 {tooltip.capital}</div>
+            {tooltip.cm && (
+              <div className="text-slate-300 text-xs mt-1">
+                👤 <span className="text-slate-200">{tooltip.cm}</span>
+                {tooltip.party && <span className="ml-1 text-indigo-400">({tooltip.party})</span>}
+              </div>
+            )}
+            {tooltip.landmark && (
+              <div className="text-slate-400 text-xs mt-0.5">{tooltip.landmarkEmoji} {tooltip.landmark}</div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -213,18 +207,24 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
 
       {/* Legend */}
       <div className="absolute bottom-4 left-4 glass-card p-3 text-xs space-y-1.5">
-        <div className="text-slate-400 font-medium mb-2">Ruling Party</div>
-        {Object.entries({ BJP: '#FF6B00', INC: '#19AAED', AAP: '#0066FF', TMC: '#267EC2', DMK: '#CC0000', Others: '#4f46e5' }).map(
-          ([party, color]) => (
-            <div key={party} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color + '99', border: `1px solid ${color}` }} />
-              <span className="text-slate-300">{party}</span>
-            </div>
-          )
-        )}
+        <div className="text-slate-400 font-semibold mb-2 uppercase tracking-wider">Ruling Party</div>
+        {[
+          { label: 'BJP', color: '#FF6B00' },
+          { label: 'INC', color: '#19AAED' },
+          { label: 'AAP', color: '#0066FF' },
+          { label: 'TMC', color: '#267EC2' },
+          { label: 'DMK', color: '#CC0000' },
+          { label: 'TDP', color: '#FFDE00' },
+          { label: 'Others', color: '#4f46e5' },
+        ].map(({ label, color }) => (
+          <div key={label} className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color + '88', border: `1px solid ${color}` }} />
+            <span className="text-slate-300">{label}</span>
+          </div>
+        ))}
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-700/50">
-          <circle className="capital-dot" />
-          <span className="text-slate-400">● State Capital</span>
+          <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          <span className="text-slate-400">State Capital</span>
         </div>
       </div>
     </div>

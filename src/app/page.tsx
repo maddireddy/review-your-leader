@@ -7,7 +7,9 @@ import { StatePanel } from '@/components/Map/StatePanel';
 import { DistrictPanel } from '@/components/Map/DistrictPanel';
 import { BreadcrumbNav } from '@/components/Map/BreadcrumbNav';
 import { RepresentativeProfile } from '@/components/Profile/RepresentativeProfile';
-import { MapView, State, District, Constituency } from '@/types';
+import { MapView, State, Constituency } from '@/types';
+import { StateInfo } from '@/lib/indiaData';
+import { DistrictInfo } from '@/lib/districtData';
 import { Info, RotateCcw, ChevronRight } from 'lucide-react';
 
 // Dynamic import to avoid SSR issues with react-simple-maps
@@ -34,8 +36,8 @@ export default function HomePage() {
     setView({ level: 'state', selectedState: state });
   }, []);
 
-  const handleDistrictSelect = useCallback((district: District) => {
-    setView((prev) => ({ ...prev, level: 'district', selectedDistrict: district }));
+  const handleDistrictSelect = useCallback((district: DistrictInfo) => {
+    setView((prev) => ({ ...prev, level: 'district', selectedDistrict: district as unknown as import('@/types').District }));
   }, []);
 
   const handleConstituencySelect = useCallback((constituency: Constituency) => {
@@ -157,14 +159,14 @@ export default function HomePage() {
                   {view.level === 'state' && view.selectedState && (
                     <StatePanel
                       key={view.selectedState.id}
-                      state={view.selectedState}
+                      state={view.selectedState as unknown as StateInfo}
                       onDistrictSelect={handleDistrictSelect}
                     />
                   )}
                   {view.level === 'district' && view.selectedDistrict && (
                     <DistrictPanel
                       key={view.selectedDistrict.id}
-                      district={view.selectedDistrict}
+                      district={view.selectedDistrict as unknown as DistrictInfo}
                       onConstituencySelect={handleConstituencySelect}
                     />
                   )}
