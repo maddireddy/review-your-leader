@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Search, MapPin, Menu, X, ChevronDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Search, MapPin, Menu, X } from 'lucide-react';
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Landmark, Users, ArrowRight, Vote } from 'lucide-react';
+import { Landmark, ArrowRight, Vote } from 'lucide-react';
 import { District, Constituency } from '@/types';
 
 // Mock constituencies

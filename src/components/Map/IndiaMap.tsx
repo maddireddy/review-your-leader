@@ -139,6 +139,7 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
                   (s) => s.geojson_id === geoName || s.name === geoName
                 );
                 const isSelected = selectedState?.id === state?.id;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const isHovered = hoveredState === state?.id;
 
                 return (

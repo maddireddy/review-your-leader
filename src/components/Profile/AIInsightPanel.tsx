@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Send, Sparkles, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Send, Sparkles, Loader2 } from 'lucide-react';
 import { Representative } from '@/types';
 
 const QUICK_QUESTIONS = [

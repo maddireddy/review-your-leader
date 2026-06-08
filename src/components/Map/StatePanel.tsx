@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { MapPin, Users, Landmark, ArrowRight, Building2 } from 'lucide-react';
+import { MapPin, Landmark, ArrowRight, Building2 } from 'lucide-react';
 import { State, District } from '@/types';
 import { formatNumber } from '@/lib/utils';
 
