@@ -13,8 +13,7 @@ import { INDIA_STATES } from '@/lib/indiaData';
 import { State } from '@/types';
 import { trackEvent } from '@/lib/posthog';
 
-const INDIA_TOPO_URL =
-  'https://cdn.jsdelivr.net/npm/india-map-topojson@1.0.1/dist/india.topojson';
+const INDIA_TOPO_URL = '/india-states.json';
 
 interface TooltipState {
   x: number;
