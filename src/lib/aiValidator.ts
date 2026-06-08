@@ -102,8 +102,6 @@ async function callModel(
 // ─── Fact-check a response against ground truth ───────────────
 function checkFacts(response: string, groundTruth: GroundTruth): FactViolation[] {
   const violations: FactViolation[] = [];
-  const lowerResp = response.toLowerCase();
-
   for (const [key, value] of Object.entries(groundTruth)) {
     // Only check name-type facts (CM, party, etc.)
     if (!['chief_minister', 'cm_party', 'capital', 'ruling_party'].includes(key)) continue;

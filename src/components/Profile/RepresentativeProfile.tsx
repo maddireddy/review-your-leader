@@ -9,7 +9,8 @@ import {
   FileText, Users
 } from 'lucide-react';
 import { Representative, Constituency } from '@/types';
-import { getAttendanceColor, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { getPartyTheme, getAttendanceTheme, CONSTITUENCY_COLORS } from '@/lib/colorSystem';
 import { AIInsightPanel } from './AIInsightPanel';
 import { TenureTimeline } from './TenureTimeline';
 
@@ -78,7 +79,9 @@ function StatBadge({ value, label, icon, color }: { value: string | number; labe
 
 export function RepresentativeProfile({ constituency }: RepresentativeProfileProps) {
   const rep = getMockRepresentative(constituency);
+  const theme = getPartyTheme(rep.party_short || rep.party);
   const [tab, setTab] = useState<'overview' | 'performance' | 'history' | 'ai'>('overview');
+  const constColors = constituency.type === 'parliament' ? CONSTITUENCY_COLORS.parliament : CONSTITUENCY_COLORS.assembly;
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <User className="w-3.5 h-3.5" /> },
@@ -97,10 +100,7 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
       {/* Header card */}
       <div className="glass-card p-4 relative overflow-hidden">
         {/* Party color stripe */}
-        <div
-          className="absolute top-0 left-0 right-0 h-1"
-          style={{ background: `linear-gradient(90deg, ${rep.party_color}, ${rep.party_color}44)` }}
-        />
+        <div className="absolute top-0 left-0 right-0 h-1" style={{ background: theme.gradient }} />
 
         <div className="flex items-start gap-3 mt-1">
           {/* Avatar */}
@@ -108,8 +108,10 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold shadow-lg"
               style={{
-                background: `linear-gradient(135deg, ${rep.party_color}33, ${rep.party_color}11)`,
-                border: `2px solid ${rep.party_color}44`,
+                background: theme.light,
+                border: `2px solid ${theme.border}`,
+                color: theme.text,
+                boxShadow: theme.glow,
               }}
             >
               {rep.photo_url ? (
@@ -125,8 +127,8 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
               )}
             </div>
             <div
-              className="absolute -bottom-1 -right-1 text-xs px-1.5 py-0.5 rounded-md font-bold text-white"
-              style={{ backgroundColor: rep.party_color }}
+              className="absolute -bottom-1 -right-1 text-xs px-1.5 py-0.5 rounded-md font-bold"
+              style={{ background: theme.badge, color: theme.text }}
             >
               {rep.party_short}
             </div>
@@ -139,8 +141,8 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
             </h2>
             <div className="flex items-center gap-1.5 mt-1">
               <span
-                className={`text-xs px-2 py-0.5 rounded-full font-medium`}
-                style={{ backgroundColor: rep.party_color + '22', color: rep.party_color }}
+                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: constColors.light, color: constColors.primary, border: `1px solid ${constColors.border}` }}
               >
                 {rep.constituency_type === 'parliament' ? '🏛 MP' : '🗳 MLA'}
               </span>
@@ -195,9 +197,10 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all',
               tab === t.id
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                ? 'text-white shadow-lg'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
             )}
+            style={tab === t.id ? { background: theme.gradient, boxShadow: theme.glow } : {}}
           >
             {t.icon}
             <span className="hidden sm:inline">{t.label}</span>
@@ -262,34 +265,37 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
             exit={{ opacity: 0, y: -8 }}
           >
             {/* Attendance */}
-            {rep.attendance_percentage !== undefined && (
-              <div className="glass-card p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-white">Parliament Attendance</h4>
-                  <span
-                    className="text-lg font-bold"
-                    style={{ color: getAttendanceColor(rep.attendance_percentage) }}
-                  >
-                    {rep.attendance_percentage}%
-                  </span>
+            {rep.attendance_percentage !== undefined && (() => {
+              const att = getAttendanceTheme(rep.attendance_percentage);
+              return (
+                <div className="glass-card p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white">Parliament Attendance</h4>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full mt-1 inline-block" style={{ background: att.bg, color: att.color }}>{att.label}</span>
+                    </div>
+                    <span className="text-2xl font-bold" style={{ color: att.color }}>
+                      {rep.attendance_percentage}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: att.color }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${rep.attendance_percentage}%` }}
+                      transition={{ duration: 1, ease: 'easeOut' }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-500 mt-1.5">
+                    <span>National avg: 79%</span>
+                    <span style={{ color: rep.attendance_percentage >= 79 ? '#22C55E' : '#EF4444' }}>
+                      {rep.attendance_percentage >= 79 ? '▲ Above avg' : '▼ Below avg'}
+                    </span>
+                  </div>
                 </div>
-                <div className="w-full h-2.5 bg-slate-700/60 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ backgroundColor: getAttendanceColor(rep.attendance_percentage) }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${rep.attendance_percentage}%` }}
-                    transition={{ duration: 1, ease: 'easeOut' }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-slate-500 mt-1.5">
-                  <span>National avg: 79%</span>
-                  <span className={rep.attendance_percentage >= 79 ? 'text-green-400' : 'text-red-400'}>
-                    {rep.attendance_percentage >= 79 ? '▲ Above avg' : '▼ Below avg'}
-                  </span>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Stats grid */}
             <div className="grid grid-cols-3 gap-2">

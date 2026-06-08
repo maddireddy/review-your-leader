@@ -3,13 +3,16 @@
 import { ChevronRight, Home, Map, Building2, Landmark } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MapView } from '@/types';
+import { getPartyTheme } from '@/lib/colorSystem';
 
 interface BreadcrumbNavProps {
   view: MapView;
   onNavigate: (level: MapView['level']) => void;
+  rulingParty?: string;
 }
 
-export function BreadcrumbNav({ view, onNavigate }: BreadcrumbNavProps) {
+export function BreadcrumbNav({ view, onNavigate, rulingParty }: BreadcrumbNavProps) {
+  const theme = getPartyTheme(rulingParty || 'default');
   const crumbs = [
     { level: 'country' as const, label: 'India', icon: <Home className="w-3.5 h-3.5" /> },
     ...(view.selectedState
@@ -36,9 +39,14 @@ export function BreadcrumbNav({ view, onNavigate }: BreadcrumbNavProps) {
             onClick={() => onNavigate(crumb.level)}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm font-medium transition-all ${
               idx === crumbs.length - 1
-                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 cursor-default'
+                ? 'cursor-default'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60 cursor-pointer'
             }`}
+            style={idx === crumbs.length - 1 ? {
+              background: theme.light,
+              color: theme.text,
+              border: `1px solid ${theme.border}`,
+            } : {}}
           >
             {crumb.icon}
             {crumb.label}

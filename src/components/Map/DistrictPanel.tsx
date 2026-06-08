@@ -6,6 +6,7 @@ import { Landmark, ArrowRight, Vote, MapPin, ChevronDown, ChevronUp, Grid3x3 } f
 import { DistrictInfo, getMandalsByDistrict } from '@/lib/districtData';
 import { Constituency } from '@/types';
 import { formatNumber } from '@/lib/utils';
+import { CONSTITUENCY_COLORS } from '@/lib/colorSystem';
 
 function getConstituencies(district: DistrictInfo): Constituency[] {
   const lok: Constituency[] = Array.from({ length: district.lok_sabha_seats }, (_, i) => ({
@@ -66,12 +67,12 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
         </div>
 
         <div className="grid grid-cols-4 gap-2">
-          <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-2.5 text-center">
-            <div className="text-lg font-bold text-orange-400">{district.lok_sabha_seats}</div>
+          <div className="rounded-xl p-2.5 text-center" style={{ background: CONSTITUENCY_COLORS.parliament.light, border: `1px solid ${CONSTITUENCY_COLORS.parliament.border}` }}>
+            <div className="text-lg font-bold" style={{ color: CONSTITUENCY_COLORS.parliament.primary }}>{district.lok_sabha_seats}</div>
             <div className="text-xs text-slate-500 leading-tight">Lok Sabha</div>
           </div>
-          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-2.5 text-center">
-            <div className="text-lg font-bold text-indigo-400">{district.assembly_seats}</div>
+          <div className="rounded-xl p-2.5 text-center" style={{ background: CONSTITUENCY_COLORS.assembly.light, border: `1px solid ${CONSTITUENCY_COLORS.assembly.border}` }}>
+            <div className="text-lg font-bold" style={{ color: CONSTITUENCY_COLORS.assembly.primary }}>{district.assembly_seats}</div>
             <div className="text-xs text-slate-500 leading-tight">Vidhan Sabha</div>
           </div>
           <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-2.5 text-center">
@@ -131,7 +132,7 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
       {parlConstituencies.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-orange-400" />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CONSTITUENCY_COLORS.parliament.primary }} />
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Lok Sabha · Parliament
             </h3>
@@ -141,22 +142,23 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
               <motion.button
                 key={c.id}
                 onClick={() => onConstituencySelect(c)}
-                className="w-full p-3 rounded-xl border border-orange-500/20 bg-orange-500/5 hover:bg-orange-500/10 hover:border-orange-500/40 transition-all group flex items-center justify-between text-left"
+                className="w-full p-3 rounded-xl transition-all group flex items-center justify-between text-left hover:brightness-110"
+                style={{ background: CONSTITUENCY_COLORS.parliament.light, border: `1px solid ${CONSTITUENCY_COLORS.parliament.border}` }}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 whileHover={{ scale: 1.01 }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-orange-500/20 flex items-center justify-center">
-                    <Landmark className="w-4 h-4 text-orange-400" />
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: CONSTITUENCY_COLORS.parliament.light, border: `1px solid ${CONSTITUENCY_COLORS.parliament.border}` }}>
+                    <Landmark className="w-4 h-4" style={{ color: CONSTITUENCY_COLORS.parliament.primary }} />
                   </div>
                   <div>
                     <div className="font-semibold text-white text-sm">{c.name}</div>
-                    <div className="text-xs text-orange-400/70 mt-0.5">Parliament • General</div>
+                    <div className="text-xs mt-0.5" style={{ color: CONSTITUENCY_COLORS.parliament.text }}>Parliament • General</div>
                   </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-orange-400 transition-colors" />
+                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:transition-colors" style={{ color: 'inherit' }} />
               </motion.button>
             ))}
           </div>
@@ -167,7 +169,7 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
       {assemblyConstituencies.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CONSTITUENCY_COLORS.assembly.primary }} />
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Vidhan Sabha · Assembly ({district.assembly_seats} seats)
             </h3>
@@ -177,20 +179,21 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
               <motion.button
                 key={c.id}
                 onClick={() => onConstituencySelect(c)}
-                className="w-full p-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-500/40 transition-all group flex items-center justify-between text-left"
+                className="w-full p-3 rounded-xl transition-all group flex items-center justify-between text-left hover:brightness-110"
+                style={{ background: CONSTITUENCY_COLORS.assembly.light, border: `1px solid ${CONSTITUENCY_COLORS.assembly.border}` }}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04 }}
                 whileHover={{ scale: 1.01 }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                    <Vote className="w-4 h-4 text-indigo-400" />
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: CONSTITUENCY_COLORS.assembly.light, border: `1px solid ${CONSTITUENCY_COLORS.assembly.border}` }}>
+                    <Vote className="w-4 h-4" style={{ color: CONSTITUENCY_COLORS.assembly.primary }} />
                   </div>
                   <div>
                     <div className="font-semibold text-white text-sm">{c.name}</div>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-indigo-400/70">Assembly</span>
+                      <span className="text-xs" style={{ color: CONSTITUENCY_COLORS.assembly.text }}>Assembly</span>
                       {c.reserved && (
                         <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/20">
                           {c.reserved}

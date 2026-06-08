@@ -95,7 +95,11 @@ export default function HomePage() {
         {/* Breadcrumb */}
         {showPanel && (
           <div className="flex-shrink-0">
-            <BreadcrumbNav view={view} onNavigate={handleNavigate} />
+            <BreadcrumbNav
+              view={view}
+              onNavigate={handleNavigate}
+              rulingParty={(view.selectedState as StateInfo | undefined)?.ruling_party}
+            />
           </div>
         )}
 
