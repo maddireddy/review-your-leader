@@ -1,25 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { askGroq } from '@/lib/groq';
+import { validateInsight } from '@/lib/aiValidator';
+import { getStateById } from '@/lib/indiaData';
 
 export async function POST(request: NextRequest) {
   try {
-    const { stateName, cm, party } = await request.json();
+    const { stateId, forceRefresh } = await request.json();
 
-    const prompt = `Give me a concise 3-4 sentence update on ${cm}, Chief Minister of ${stateName} (${party}):
-- What major governance initiatives have been launched recently?
-- What is the state's current economic or development status?
-- Any notable achievements or challenges in the last 6 months?
-Keep it factual, neutral, and under 120 words.`;
+    const state = getStateById(stateId);
+    if (!state) {
+      return NextResponse.json({ error: 'State not found' }, { status: 404 });
+    }
 
-    const insight = await askGroq(prompt,
-      'You are a political journalist providing neutral, factual briefings on Indian state politicians. Be concise and informative.'
+    // ── Ground truth — injected into ALL model prompts ──────────
+    // This prevents hallucination of stale facts like old CMs
+    const groundTruth = {
+      chief_minister: state.chief_minister,
+      cm_party: state.cm_party,
+      ruling_party: state.ruling_party,
+      capital: state.capital,
+      state_name: state.name,
+      landmark: state.landmark,
+    };
+
+    // ── User prompt ──────────────────────────────────────────────
+    const userPrompt = `Provide a factual 3-sentence governance briefing on ${state.chief_minister},
+Chief Minister of ${state.name} (${state.cm_party}):
+1. What major policy or development initiative has been launched recently?
+2. What is a notable achievement or challenge in infrastructure/economy/welfare?
+3. What is one key ongoing project or campaign in the state?
+
+Stay grounded in verified facts. Be specific, neutral, and informative.`;
+
+    // ── Run 3-level validation pipeline ─────────────────────────
+    const result = await validateInsight(
+      'state',
+      stateId,
+      userPrompt,
+      groundTruth,
+      { forceRefresh: forceRefresh === true }
     );
 
-    return NextResponse.json({ insight });
+    return NextResponse.json({
+      insight: result.finalResponse,
+      validation: {
+        status: result.validationStatus,
+        consensusScore: result.consensusScore,
+        modelsUsed: result.model3Response ? 3 : 2,
+        autoCorrected: result.autoCorrected,
+        factViolations: result.factViolations.length,
+        fromCache: result.fromCache,
+        cacheAge: result.cacheAge,
+      },
+    });
   } catch (error) {
-    console.error('State insight error:', error);
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[state-insight]', msg);
     return NextResponse.json(
-      { insight: 'AI insight unavailable. Please add GROQ_API_KEY to your environment variables.' },
+      { insight: `AI service unavailable: ${msg.includes('GROQ') ? 'Add GROQ_API_KEY in Vercel settings.' : msg}` },
       { status: 200 }
     );
   }

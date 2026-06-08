@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowRight, Building2, Sparkles, Loader2, ChevronDown, ChevronUp, Globe } from 'lucide-react';
+import { MapPin, ArrowRight, Building2, Sparkles, Loader2, ChevronDown, ChevronUp, Globe, RefreshCw, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { StateInfo } from '@/lib/indiaData';
 import { getDistrictsByState, DistrictInfo } from '@/lib/districtData';
 import { formatNumber } from '@/lib/utils';
+import { getPartyTheme, VALIDATION_COLORS } from '@/lib/colorSystem';
 
 interface StatePanelProps {
   state: StateInfo;
@@ -15,8 +16,13 @@ interface StatePanelProps {
 export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
   const districts = getDistrictsByState(state.id);
   const [aiInsight, setAiInsight] = useState<string>('');
+  const [validation, setValidation] = useState<{
+    status: string; consensusScore: number; modelsUsed: number;
+    autoCorrected: boolean; factViolations: number; fromCache: boolean; cacheAge?: number;
+  } | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const theme = getPartyTheme(state.ruling_party);
 
   const visibleDistricts = showAll ? districts : districts.slice(0, 8);
 
@@ -26,22 +32,21 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
     return () => clearTimeout(timer);
   }, [state.id]);
 
-  async function fetchAIInsight() {
+  async function fetchAIInsight(forceRefresh = false) {
     setLoadingAI(true);
+    setAiInsight('');
+    setValidation(null);
     try {
       const res = await fetch('/api/state-insight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stateName: state.name,
-          cm: state.chief_minister,
-          party: state.cm_party,
-        }),
+        body: JSON.stringify({ stateId: state.id, forceRefresh }),
       });
       const data = await res.json();
       setAiInsight(data.insight || 'Insight unavailable.');
+      if (data.validation) setValidation(data.validation);
     } catch {
-      setAiInsight('Unable to fetch AI insight. Please configure GROQ_API_KEY.');
+      setAiInsight('Unable to fetch AI insight. Please configure GROQ_API_KEY in Vercel settings.');
     } finally {
       setLoadingAI(false);
     }
@@ -56,8 +61,8 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
     >
       {/* State + Landmark Hero Card */}
       <div className="glass-card overflow-hidden">
-        {/* Party color header stripe */}
-        <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${state.cm_party_color}, ${state.cm_party_color}44)` }} />
+        {/* Dynamic party gradient stripe */}
+        <div className="h-1.5 w-full" style={{ background: theme.gradient }} />
 
         <div className="p-4">
           {/* Landmark */}
@@ -114,31 +119,31 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
 
         <div className="flex items-center gap-3 mb-3">
           {/* CM Avatar */}
+          {/* CM Avatar — uses dynamic party theme */}
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 shadow-lg"
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0"
             style={{
-              background: `linear-gradient(135deg, ${state.cm_party_color}44, ${state.cm_party_color}22)`,
-              border: `2px solid ${state.cm_party_color}66`,
+              background: theme.light,
+              border: `2px solid ${theme.border}`,
+              color: theme.text,
+              boxShadow: theme.glow,
             }}
           >
             {state.chief_minister.split(' ').map(w => w[0]).join('').slice(0, 2)}
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2
-              className="text-base font-bold text-white leading-tight"
-              style={{ fontFamily: 'var(--font-rajdhani)' }}
-            >
+            <h2 className="text-base font-bold text-white leading-tight" style={{ fontFamily: 'var(--font-rajdhani)' }}>
               {state.chief_minister}
             </h2>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               <span
-                className="text-xs px-2 py-0.5 rounded-full font-semibold text-white"
-                style={{ backgroundColor: state.cm_party_color }}
+                className="text-xs px-2.5 py-0.5 rounded-full font-bold tracking-wide"
+                style={{ background: theme.badge, color: theme.text, border: `1px solid ${theme.border}` }}
               >
                 {state.ruling_party}
               </span>
-              <span className="text-xs text-slate-400">{state.cm_party}</span>
+              <span className="text-xs text-slate-500 truncate">{state.cm_party}</span>
             </div>
           </div>
         </div>
@@ -147,11 +152,11 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
         <AnimatePresence>
           {!aiInsight && !loadingAI && (
             <button
-              onClick={fetchAIInsight}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 transition-all text-sm text-violet-300 hover:text-violet-200"
+              onClick={() => fetchAIInsight(false)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 transition-all text-sm text-violet-300 hover:text-violet-200 font-medium"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Get Latest AI Insights on {state.chief_minister.split(' ')[0]}
+              Get AI Insights · 3-Model Validated
             </button>
           )}
 
@@ -164,15 +169,53 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
 
           {aiInsight && (
             <motion.div
-              className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-xs text-slate-300 leading-relaxed"
+              className="rounded-xl overflow-hidden border border-violet-500/20"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
             >
-              <div className="flex items-center gap-1.5 mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-violet-400 font-semibold text-xs">Groq AI · LLaMA 3.3 70B</span>
+              {/* Validation header bar */}
+              {validation && (() => {
+                const vc = VALIDATION_COLORS[validation.status as keyof typeof VALIDATION_COLORS] || VALIDATION_COLORS.pending;
+                return (
+                  <div
+                    className="flex items-center justify-between px-3 py-1.5 text-xs font-medium"
+                    style={{ background: vc.bg, borderBottom: `1px solid ${vc.color}22` }}
+                  >
+                    <div className="flex items-center gap-1.5" style={{ color: vc.color }}>
+                      {validation.status === 'validated'
+                        ? <ShieldCheck className="w-3 h-3" />
+                        : <AlertTriangle className="w-3 h-3" />}
+                      <span>{vc.label}</span>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-slate-400">{validation.modelsUsed} models</span>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-slate-400">{Math.round(validation.consensusScore * 100)}% consensus</span>
+                      {validation.autoCorrected && <span className="text-amber-400">· auto-corrected</span>}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {validation.fromCache && (
+                        <span className="text-slate-500">{validation.cacheAge}m cached ·</span>
+                      )}
+                      <button
+                        onClick={() => fetchAIInsight(true)}
+                        className="text-slate-500 hover:text-violet-400 transition-colors"
+                        title="Force refresh"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Insight text */}
+              <div className="p-3 bg-violet-500/5 text-xs text-slate-300 leading-relaxed">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                  <span className="text-violet-400 font-semibold">Groq LLaMA 3.3 70B · Ground-truth anchored</span>
+                </div>
+                {aiInsight}
               </div>
-              {aiInsight}
             </motion.div>
           )}
         </AnimatePresence>

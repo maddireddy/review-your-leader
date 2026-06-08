@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { INDIA_STATES, StateInfo } from '@/lib/indiaData';
 import { State } from '@/types';
 import { trackEvent } from '@/lib/posthog';
+import { getMapFillColor, MAP_LEGEND } from '@/lib/colorSystem';
 
 const INDIA_TOPO_URL = '/india-states.json';
 
@@ -34,10 +35,7 @@ interface IndiaMapProps {
 
 function getStateColor(stateId: string, isSelected: boolean, isHovered: boolean) {
   const state = INDIA_STATES.find(s => s.id === stateId) as StateInfo | undefined;
-  const base = state?.cm_party_color || '#4f46e5';
-  if (isSelected) return '#818cf8';
-  if (isHovered) return base + 'cc';
-  return base + '44';
+  return getMapFillColor(state?.ruling_party || 'default', isSelected, isHovered);
 }
 
 export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
@@ -205,20 +203,12 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
         </ZoomableGroup>
       </ComposableMap>
 
-      {/* Legend */}
+      {/* Legend — uses colorSystem MAP_LEGEND */}
       <div className="absolute bottom-4 left-4 glass-card p-3 text-xs space-y-1.5">
-        <div className="text-slate-400 font-semibold mb-2 uppercase tracking-wider">Ruling Party</div>
-        {[
-          { label: 'BJP', color: '#FF6B00' },
-          { label: 'INC', color: '#19AAED' },
-          { label: 'AAP', color: '#0066FF' },
-          { label: 'TMC', color: '#267EC2' },
-          { label: 'DMK', color: '#CC0000' },
-          { label: 'TDP', color: '#FFDE00' },
-          { label: 'Others', color: '#4f46e5' },
-        ].map(({ label, color }) => (
+        <div className="text-slate-400 font-semibold mb-2 uppercase tracking-wider text-[10px]">Ruling Party</div>
+        {MAP_LEGEND.map(({ label, color }) => (
           <div key={label} className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color + '88', border: `1px solid ${color}` }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color + '70', border: `1px solid ${color}` }} />
             <span className="text-slate-300">{label}</span>
           </div>
         ))}
