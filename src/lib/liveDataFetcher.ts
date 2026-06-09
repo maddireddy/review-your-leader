@@ -14,6 +14,7 @@
  */
 
 import Groq from 'groq-sdk';
+import { webSearch } from './webSearch';
 
 let _groq: Groq | null = null;
 function groq(): Groq {
@@ -24,10 +25,8 @@ function groq(): Groq {
   return _groq;
 }
 
-// Models — compound has web search; the others are pure validators
+// Reasoning/validation models (web search is handled by webSearch layer)
 const MODELS = {
-  websearch: 'groq/compound',          // agentic web search (live internet)
-  websearchFast: 'groq/compound-mini', // faster, single search
   validator1: 'llama-3.3-70b-versatile',
   validator2: 'llama-3.1-8b-instant',
 } as const;
@@ -47,66 +46,32 @@ export interface LiveFact {
 export async function fetchCurrentCM(stateName: string): Promise<LiveFact> {
   const fetched_at = new Date().toISOString();
 
-  // Step 1: web-search model pulls the live fact.
-  // Try compound model variants in order — names have changed across Groq releases.
-  let raw = '';
-  let sources: string[] = [];
-  let lastErr = '';
-  const candidates = [MODELS.websearch, MODELS.websearchFast, 'compound-beta', 'compound-beta-mini'];
+  // Step 1: live web search (Tavily → Serper → Groq compound fallback)
+  const search = await webSearch(
+    `current Chief Minister of ${stateName} India ${new Date().getFullYear()} latest`
+  );
 
-  for (const model of candidates) {
-    try {
-      const resp = await groq().chat.completions.create({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a precise political-data researcher. Use web search to find the CURRENT, most up-to-date answer. Today's date matters — always prefer the most recent verified information. Cite your sources.`,
-          },
-          {
-            role: 'user',
-            content: `Who is the CURRENT Chief Minister of ${stateName}, India, as of today? Search the web for the latest information — there may have been a recent election or change. Provide: (1) full name, (2) their political party, (3) the date they took office if known. Be precise and cite sources.`,
-          },
-        ],
-        temperature: 0.1,
-        max_tokens: 800,
-      });
-      raw = resp.choices[0]?.message?.content || '';
-      sources = extractUrls(raw);
-      const exec = (resp.choices[0]?.message as { executed_tools?: { search_results?: { results?: { url: string }[] } }[] })?.executed_tools;
-      if (exec) {
-        for (const tool of exec) {
-          for (const r of tool.search_results?.results ?? []) {
-            if (r.url) sources.push(r.url);
-          }
-        }
-      }
-      if (raw) break; // success
-    } catch (err) {
-      lastErr = err instanceof Error ? err.message : 'unknown';
-      // try next model name
-    }
-  }
-
-  if (!raw) {
+  if (!search.ok || search.snippets.length === 0) {
     return {
       key: 'chief_minister', value: '', sources: [], confidence: 0,
-      reasoning: `Web search unavailable (tried ${candidates.length} models). Last error: ${lastErr || 'no response'}`,
+      reasoning: `Web search failed (${search.provider}): ${search.error || 'no results'}. Add a TAVILY_API_KEY (free at tavily.com) for reliable live search.`,
       fetched_at,
     };
   }
 
-  // Step 2: extract structured fact from the web-search prose
-  const extracted = await extractCMFact(stateName, raw);
+  const webContext = search.snippets.join('\n\n').slice(0, 4000);
+
+  // Step 2: extract structured fact from the search results
+  const extracted = await extractCMFact(stateName, webContext);
 
   return {
     key: 'chief_minister',
     value: extracted.name,
     party: extracted.party,
     since: extracted.since,
-    sources: [...new Set(sources)].slice(0, 5),
+    sources: [...new Set(search.sources)].slice(0, 5),
     confidence: extracted.name ? 0.7 : 0,  // base; bumped by validation
-    reasoning: extracted.reasoning,
+    reasoning: webContext.slice(0, 600),    // pass web context to validators
     fetched_at,
   };
 }
@@ -196,10 +161,4 @@ export async function validateFact(
     confidence: agree ? avgConf : avgConf * 0.4,
     notes: `${agreeCount}/${validators.length} validators agree (avg conf ${(avgConf * 100).toFixed(0)}%)`,
   };
-}
-
-// ─── helper: extract URLs from text ─────────────────────────────
-function extractUrls(text: string): string[] {
-  const matches = text.match(/https?:\/\/[^\s)"']+/g) || [];
-  return matches.map(u => u.replace(/[.,;]+$/, ''));
 }

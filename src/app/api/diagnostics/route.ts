@@ -30,7 +30,6 @@ export async function GET() {
   const groqConfigured = isReal(groqKey, 40, 'gsk_');
   let groqWorking: boolean | null = null;
   let groqDetail = '';
-  let compoundDetail = '';
 
   if (!groqKey) {
     groqDetail = 'GROQ_API_KEY not set';
@@ -50,25 +49,37 @@ export async function GET() {
       groqWorking = false;
       groqDetail = `Request failed: ${e instanceof Error ? e.message : 'unknown'}`;
     }
-
-    // Test the compound (web search) model specifically
-    if (groqWorking) {
-      for (const model of ['groq/compound', 'compound-beta']) {
-        try {
-          const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Who is the current PM of India? One word.' }], max_tokens: 30 }),
-          });
-          if (r.ok) { compoundDetail = `Web-search model "${model}" works ✓`; break; }
-          else compoundDetail = `"${model}" → HTTP ${r.status}`;
-        } catch { compoundDetail = 'compound request failed'; }
-      }
-    }
   }
 
   checks.push({ service: 'Groq (AI insights)', configured: groqConfigured, working: groqWorking, detail: groqDetail });
-  checks.push({ service: 'Groq Compound (LIVE web search)', configured: groqConfigured, working: groqWorking ? compoundDetail.includes('✓') : null, detail: compoundDetail || 'Not tested (Groq auth failed)' });
+
+  // ── 1b. Web search layer (Tavily → Serper → Groq compound) ────
+  const tavilyKey = process.env.TAVILY_API_KEY;
+  const serperKey = process.env.SERPER_API_KEY;
+  let searchWorking: boolean | null = null;
+  let searchDetail = '';
+
+  if (tavilyKey || serperKey || groqConfigured) {
+    try {
+      const { webSearch } = await import('@/lib/webSearch');
+      const res = await webSearch('current Prime Minister of India 2026');
+      searchWorking = res.ok;
+      searchDetail = res.ok
+        ? `Working via "${res.provider}" ✓ (${res.sources.length} sources)`
+        : `All providers failed. ${res.error}. → Add a FREE Tavily key (tavily.com) as TAVILY_API_KEY for reliable live search.`;
+    } catch (e) {
+      searchWorking = false;
+      searchDetail = `Search error: ${e instanceof Error ? e.message : 'unknown'}`;
+    }
+  } else {
+    searchDetail = 'No web-search provider configured. Add TAVILY_API_KEY (free, no card) — this is what powers live CM updates.';
+  }
+  checks.push({
+    service: 'Live Web Search (CM updates)',
+    configured: !!(tavilyKey || serperKey || groqConfigured),
+    working: searchWorking,
+    detail: searchDetail,
+  });
 
   // ── 2. Supabase (persistence of verified facts) ───────────────
   const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -80,15 +91,27 @@ export async function GET() {
   if (!sbConfigured) {
     sbDetail = `Supabase not configured. URL ${sbUrl ? `(${sbUrl.length} chars)` : 'missing'}, service key ${sbKey ? `(${sbKey.length} chars)` : 'missing'}. Without it, live facts can't persist across users.`;
   } else {
-    try {
-      const r = await fetch(`${sbUrl}/rest/v1/ground_truth_facts?select=count`, {
-        headers: { 'apikey': sbKey!, 'Authorization': `Bearer ${sbKey}` },
-      });
-      sbWorking = r.ok;
-      sbDetail = r.ok ? 'Connected, ground_truth_facts table reachable ✓' : `HTTP ${r.status}: ${(await r.text()).slice(0, 120)} — did you run schema_v2 + v3 SQL?`;
-    } catch (e) {
+    // Detect the most common misconfig: URL points at the wrong host
+    if (!/^https:\/\/[a-z0-9]+\.supabase\.co/i.test(sbUrl!)) {
       sbWorking = false;
-      sbDetail = `Connection failed: ${e instanceof Error ? e.message : 'unknown'}`;
+      sbDetail = `❌ NEXT_PUBLIC_SUPABASE_URL is "${sbUrl}" — that is NOT a Supabase URL. It must look like https://YOURPROJECT.supabase.co (Supabase → Settings → API → Project URL). Right now it points elsewhere (probably your Vercel app), so every DB call 404s.`;
+    } else {
+      try {
+        const r = await fetch(`${sbUrl}/rest/v1/ground_truth_facts?select=count`, {
+          headers: { 'apikey': sbKey!, 'Authorization': `Bearer ${sbKey}` },
+        });
+        const body = (await r.text()).slice(0, 140);
+        if (body.includes('<!DOCTYPE') || body.includes('<html')) {
+          sbWorking = false;
+          sbDetail = `❌ URL returned an HTML page, not Supabase JSON. NEXT_PUBLIC_SUPABASE_URL is pointing at the wrong server. Set it to https://YOURPROJECT.supabase.co`;
+        } else {
+          sbWorking = r.ok;
+          sbDetail = r.ok ? 'Connected, ground_truth_facts table reachable ✓' : `HTTP ${r.status}: ${body} — run schema_v2_cache.sql + schema_v3_autopipeline.sql`;
+        }
+      } catch (e) {
+        sbWorking = false;
+        sbDetail = `Connection failed: ${e instanceof Error ? e.message : 'unknown'}`;
+      }
     }
   }
   checks.push({ service: 'Supabase (fact persistence)', configured: sbConfigured, working: sbWorking, detail: sbDetail });
@@ -113,20 +136,20 @@ export async function GET() {
   });
 
   // ── Summary ───────────────────────────────────────────────────
-  const liveDataReady = groqWorking === true && compoundDetail.includes('✓');
+  const liveDataReady = searchWorking === true;
   const summary = liveDataReady
-    ? '✅ Live data pipeline is OPERATIONAL — click "Verify live" on any state.'
-    : '❌ Live data pipeline is NOT working. Fix the Groq key (and ideally Supabase) below.';
+    ? '✅ Live data pipeline is OPERATIONAL — click "Verify live" on any state to fetch the current CM.'
+    : '❌ Live web search is NOT working. Add a free Tavily key (see next_steps) — this is what fetches current CMs.';
 
   return NextResponse.json({
     summary,
     live_data_ready: liveDataReady,
     persistence_ready: sbWorking === true,
     checks,
-    next_steps: liveDataReady ? [] : [
-      groqConfigured ? null : '1. Get a FREE Groq key at console.groq.com (starts with gsk_), add as GROQ_API_KEY in Vercel → Settings → Environment Variables',
-      sbConfigured ? null : '2. (Optional) Create a Supabase project, run supabase/schema_v2_cache.sql + schema_v3_autopipeline.sql, add the 3 Supabase env vars — needed to persist live facts across users',
-      '3. Redeploy on Vercel after adding env vars',
+    next_steps: [
+      liveDataReady ? null : '1. Get a FREE Tavily key at tavily.com (no credit card, 1000 searches/mo). Add as TAVILY_API_KEY in Vercel → Settings → Environment Variables. This powers live CM lookups.',
+      sbWorking === true ? null : '2. Fix NEXT_PUBLIC_SUPABASE_URL — it must be https://YOURPROJECT.supabase.co (from Supabase → Settings → API → Project URL). Then run schema_v2_cache.sql + schema_v3_autopipeline.sql in the SQL editor.',
+      '3. Redeploy on Vercel after changing any env var (env changes need a fresh build).',
     ].filter(Boolean),
   }, { status: 200 });
 }
