@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLiveStateInfo } from '@/lib/groundTruthStore';
-import { fetchCurrentCM, validateFact } from '@/lib/liveDataFetcher';
+import { fetchCurrentCM, validateFact, fetchStateEnrichment } from '@/lib/liveDataFetcher';
 import { writeVerifiedFact, invalidateFactsCache } from '@/lib/groundTruthStore';
 import { getStateById } from '@/lib/indiaData';
 
@@ -64,6 +64,25 @@ export async function POST(request: NextRequest) {
         confidence, sources: fact.sources, validation_notes: validation.notes,
       });
       invalidateFactsCache();
+
+      // Bonus: enrich with heritage/infrastructure/developments (non-blocking-ish).
+      // Stored under separate fact_keys so the overlay machinery reuses as-is.
+      try {
+        const enrich = await fetchStateEnrichment(state.name);
+        if (enrich.recent_developments.length || enrich.heritage.length) {
+          await writeVerifiedFact({
+            entity_type: 'state', entity_id: state.id, fact_key: 'enrichment',
+            fact_value: JSON.stringify({
+              recent_developments: enrich.recent_developments,
+              infrastructure: enrich.infrastructure,
+              heritage: enrich.heritage,
+            }),
+            confidence: 0.8, sources: enrich.sources,
+            validation_notes: 'web-sourced civic enrichment',
+          });
+          invalidateFactsCache();
+        }
+      } catch { /* enrichment is best-effort */ }
     }
 
     return NextResponse.json({

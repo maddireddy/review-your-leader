@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, ArrowRight, Building2, Sparkles, Loader2, ChevronDown, ChevronUp, Globe, RefreshCw, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { StateInfo } from '@/lib/indiaData';
@@ -37,29 +37,9 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
 
   const visibleDistricts = showAll ? districts : districts.slice(0, 8);
 
-  // Reset + load live overlay when state changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAiInsight('');
-      setLiveCM(null);
-    }, 0);
-    // Fetch any already-verified live fact (fast, cached)
-    fetch(`/api/state-live?stateId=${state.id}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.is_live && d.chief_minister) {
-          setLiveCM({
-            name: d.chief_minister, party: d.cm_party, isLive: true,
-            confidence: d.confidence, sources: d.sources, verifiedAt: d.verified_at,
-          });
-        }
-      })
-      .catch(() => {});
-    return () => clearTimeout(timer);
-  }, [state.id]);
-
-  // On-demand live verification — triggers the full web-search + validation pipeline
-  async function verifyLive() {
+  // Live verification — triggers the full web-search + validation pipeline.
+  // Used both for the manual "Verify live" button and silent auto-refresh.
+  const runVerify = useCallback(async () => {
     setVerifying(true);
     try {
       const res = await fetch('/api/state-live', {
@@ -68,16 +48,48 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
         body: JSON.stringify({ stateId: state.id }),
       });
       const d = await res.json();
-      if (d.chief_minister) {
+      if (d.chief_minister && d.is_live) {
         setLiveCM({
-          name: d.chief_minister, party: d.cm_party, isLive: d.is_live,
+          name: d.chief_minister, party: d.cm_party, isLive: true,
           confidence: d.confidence, sources: d.sources,
           verifiedAt: new Date().toISOString(),
         });
       }
-    } catch { /* ignore */ }
+    } catch { /* silent */ }
     finally { setVerifying(false); }
-  }
+  }, [state.id]);
+
+  const verifyLive = runVerify;
+
+  // Reset + load live overlay when state changes; auto-refresh if stale
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setAiInsight('');
+      setLiveCM(null);
+    }, 0);
+
+    // 1. Read any already-verified fact from DB (fast)
+    fetch(`/api/state-live?stateId=${state.id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancelled) return;
+        const hasLive = d.is_live && d.chief_minister;
+        if (hasLive) {
+          setLiveCM({
+            name: d.chief_minister, party: d.cm_party, isLive: true,
+            confidence: d.confidence, sources: d.sources, verifiedAt: d.verified_at,
+          });
+        }
+        // 2. AUTO-VERIFY if missing or stale (>7 days) — the "continuous agent"
+        const ageMs = d.verified_at ? Date.now() - new Date(d.verified_at).getTime() : Infinity;
+        const stale = ageMs > 7 * 24 * 60 * 60 * 1000;
+        if (!hasLive || stale) runVerify();
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [state.id, runVerify]);
 
   async function fetchAIInsight(forceRefresh = false) {
     setLoadingAI(true);

@@ -5,6 +5,8 @@ import { PostHogProvider } from '@/components/Layout/PostHogProvider';
 import { Navbar } from '@/components/Layout/Navbar';
 import { ServiceWorker } from '@/components/Layout/ServiceWorker';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
+import { NationalAnthem } from '@/components/Patriotic/NationalAnthem';
+import { FlagBackground } from '@/components/Patriotic/FlagBackground';
 import type { Viewport } from 'next';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -44,8 +46,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-slate-950 text-slate-100 antialiased min-h-screen">
         <LanguageProvider>
           <PostHogProvider>
+            <FlagBackground />
             <Navbar />
             {children}
+            <NationalAnthem />
             <ServiceWorker />
           </PostHogProvider>
         </LanguageProvider>

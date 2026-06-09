@@ -13,6 +13,7 @@
 
 import { getSupabaseAdmin } from './supabaseAdmin';
 import { getStateById, StateInfo } from './indiaData';
+import { normalizeParty } from './liveDataFetcher';
 
 export interface VerifiedFact {
   entity_type: string;
@@ -92,10 +93,13 @@ export async function getLiveStateInfo(stateId: string): Promise<LiveStateInfo |
   const cmFact = await getVerifiedFact('state', stateId, 'chief_minister');
 
   if (cmFact && cmFact.fact_value) {
+    // Defensive: reject any non-canonical party text stored by older runs
+    // (e.g. the "Non-Dravidian party" hallucination) — fall back to verified static.
+    const partyNorm = normalizeParty(cmFact.fact_party);
     return {
       ...base,
       chief_minister: cmFact.fact_value,
-      cm_party: cmFact.fact_party || base.cm_party,
+      cm_party: partyNorm.full || base.cm_party,
       cm_is_live: true,
       cm_confidence: cmFact.confidence,
       cm_sources: cmFact.sources,

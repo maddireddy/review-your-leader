@@ -35,6 +35,7 @@ export interface LiveFact {
   key: string;                    // e.g. 'chief_minister'
   value: string;                  // e.g. 'Siddaramaiah'
   party?: string;                 // e.g. 'Indian National Congress'
+  party_short?: string;           // e.g. 'INC'
   since?: string;                 // ISO date if known
   sources: string[];             // URLs the web-search model cited
   confidence: number;             // 0–1
@@ -68,6 +69,7 @@ export async function fetchCurrentCM(stateName: string): Promise<LiveFact> {
     key: 'chief_minister',
     value: extracted.name,
     party: extracted.party,
+    party_short: extracted.party_short,
     since: extracted.since,
     sources: [...new Set(search.sources)].slice(0, 5),
     confidence: extracted.name ? 0.7 : 0,  // base; bumped by validation
@@ -76,9 +78,44 @@ export async function fetchCurrentCM(stateName: string): Promise<LiveFact> {
   };
 }
 
+// Canonical Indian political parties — extraction is normalized to these
+const CANONICAL_PARTIES: { match: RegExp; full: string; short: string }[] = [
+  { match: /bharatiya janata|\bbjp\b/i, full: 'Bharatiya Janata Party', short: 'BJP' },
+  { match: /indian national congress|\binc\b|\bcongress\b/i, full: 'Indian National Congress', short: 'INC' },
+  { match: /dravida munnetra kazhagam|\bdmk\b/i, full: 'Dravida Munnetra Kazhagam', short: 'DMK' },
+  { match: /all india anna dravida|\baiadmk\b/i, full: 'All India Anna Dravida Munnetra Kazhagam', short: 'AIADMK' },
+  { match: /telugu desam|\btdp\b/i, full: 'Telugu Desam Party', short: 'TDP' },
+  { match: /yuvajana sramika|\bysrcp\b|ysr congress/i, full: 'YSR Congress Party', short: 'YSRCP' },
+  { match: /bharat rashtra|telangana rashtra|\bbrs\b|\btrs\b/i, full: 'Bharat Rashtra Samithi', short: 'BRS' },
+  { match: /trinamool|\btmc\b|aitc/i, full: 'All India Trinamool Congress', short: 'TMC' },
+  { match: /aam aadmi|\baap\b/i, full: 'Aam Aadmi Party', short: 'AAP' },
+  { match: /samajwadi|\bsp\b/i, full: 'Samajwadi Party', short: 'SP' },
+  { match: /bahujan samaj|\bbsp\b/i, full: 'Bahujan Samaj Party', short: 'BSP' },
+  { match: /janata dal \(united\)|\bjdu\b|jd\(u\)/i, full: 'Janata Dal (United)', short: 'JDU' },
+  { match: /rashtriya janata|\brjd\b/i, full: 'Rashtriya Janata Dal', short: 'RJD' },
+  { match: /communist party.*marxist|cpi\(m\)|\bcpim\b/i, full: 'Communist Party of India (Marxist)', short: 'CPI(M)' },
+  { match: /nationalist congress|\bncp\b/i, full: 'Nationalist Congress Party', short: 'NCP' },
+  { match: /shiv sena/i, full: 'Shiv Sena', short: 'SS' },
+  { match: /national conference|\bjknc\b/i, full: 'Jammu & Kashmir National Conference', short: 'NC' },
+  { match: /biju janata|\bbjd\b/i, full: 'Biju Janata Dal', short: 'BJD' },
+  { match: /jharkhand mukti|\bjmm\b/i, full: 'Jharkhand Mukti Morcha', short: 'JMM' },
+  { match: /national people'?s party|\bnpp\b/i, full: 'National People\'s Party', short: 'NPP' },
+  { match: /sikkim krantikari|\bskm\b/i, full: 'Sikkim Krantikari Morcha', short: 'SKM' },
+  { match: /tamilaga vettri kazhagam|\btvk\b/i, full: 'Tamilaga Vettri Kazhagam', short: 'TVK' },
+];
+
+export function normalizeParty(raw: string | undefined): { full?: string; short?: string } {
+  if (!raw) return {};
+  for (const p of CANONICAL_PARTIES) {
+    if (p.match.test(raw)) return { full: p.full, short: p.short };
+  }
+  // Unknown/garbage party text (e.g. "Non-Dravidian party") — reject it
+  return {};
+}
+
 // ─── 2. EXTRACT structured fact from prose ──────────────────────
 async function extractCMFact(stateName: string, prose: string): Promise<{
-  name: string; party?: string; since?: string; reasoning: string;
+  name: string; party?: string; party_short?: string; since?: string; reasoning: string;
 }> {
   try {
     const resp = await groq().chat.completions.create({
@@ -86,11 +123,11 @@ async function extractCMFact(stateName: string, prose: string): Promise<{
       messages: [
         {
           role: 'system',
-          content: 'Extract structured data. Respond ONLY with valid JSON, no markdown.',
+          content: `You extract verified facts from web search results about Indian politics. Respond ONLY with valid JSON. Rules: The "name" must be a real person's full name (e.g. "M. K. Stalin"). The "party" must be an OFFICIAL party name or its abbreviation (e.g. "DMK", "Bharatiya Janata Party") — NEVER a description like "regional party" or "Dravidian party". If you are not certain of the exact party, leave it empty.`,
         },
         {
           role: 'user',
-          content: `From this research about the Chief Minister of ${stateName}, extract the CURRENT CM.\n\nResearch:\n"""${prose}"""\n\nReturn JSON: {"name": "full name", "party": "full party name", "since": "YYYY-MM-DD or empty", "reasoning": "one sentence on certainty"}`,
+          content: `From these web search results about the Chief Minister of ${stateName}, India, extract the CURRENT Chief Minister.\n\nSearch results:\n"""${prose}"""\n\nReturn JSON: {"name": "person's full name", "party": "official party name or abbreviation only", "since": "YYYY-MM-DD or empty", "reasoning": "one sentence citing what the results say"}`,
         },
       ],
       temperature: 0,
@@ -98,9 +135,15 @@ async function extractCMFact(stateName: string, prose: string): Promise<{
       response_format: { type: 'json_object' },
     });
     const json = JSON.parse(resp.choices[0]?.message?.content || '{}');
+    const name = (json.name || '').trim();
+    // Reject obviously-bad names
+    const looksLikeName = /^[A-Z]/.test(name) && name.length >= 3 && name.length <= 60 && !/party|unknown|n\/?a/i.test(name);
+    const partyNorm = normalizeParty((json.party || '').trim());
+
     return {
-      name: (json.name || '').trim(),
-      party: (json.party || '').trim() || undefined,
+      name: looksLikeName ? name : '',
+      party: partyNorm.full,           // only canonical party names — no garbage
+      party_short: partyNorm.short,
       since: (json.since || '').trim() || undefined,
       reasoning: json.reasoning || '',
     };
@@ -161,4 +204,54 @@ export async function validateFact(
     confidence: agree ? avgConf : avgConf * 0.4,
     notes: `${agreeCount}/${validators.length} validators agree (avg conf ${(avgConf * 100).toFixed(0)}%)`,
   };
+}
+
+// ─── ENRICHMENT — recent developments, heritage, infrastructure ─
+// Same web-search → reason pattern, for the "one-stop-shop" content.
+export interface StateEnrichment {
+  recent_developments: string[];   // latest govt initiatives / news
+  infrastructure: string[];        // major projects
+  heritage: string[];              // cultural/heritage highlights
+  sources: string[];
+  fetched_at: string;
+}
+
+export async function fetchStateEnrichment(stateName: string): Promise<StateEnrichment> {
+  const fetched_at = new Date().toISOString();
+  const search = await webSearch(
+    `${stateName} India ${new Date().getFullYear()} latest government initiatives infrastructure projects heritage tourism developments`
+  );
+
+  const empty: StateEnrichment = { recent_developments: [], infrastructure: [], heritage: [], sources: [], fetched_at };
+  if (!search.ok || search.snippets.length === 0) return empty;
+
+  try {
+    const resp = await groq().chat.completions.create({
+      model: MODELS.validator1,
+      messages: [
+        {
+          role: 'system',
+          content: 'You summarise factual, neutral, civic information about Indian states. Respond ONLY with JSON. Each array item is a short factual phrase (max 15 words). No opinions, no fabrication.',
+        },
+        {
+          role: 'user',
+          content: `From these web results about ${stateName}, extract up-to-date civic facts.\n\n"""${search.snippets.join('\n\n').slice(0, 4000)}"""\n\nReturn JSON: {"recent_developments": ["..."], "infrastructure": ["..."], "heritage": ["..."]} — up to 4 items each, only if supported by the results.`,
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 600,
+      response_format: { type: 'json_object' },
+    });
+    const json = JSON.parse(resp.choices[0]?.message?.content || '{}');
+    const arr = (x: unknown): string[] => Array.isArray(x) ? x.filter(s => typeof s === 'string').slice(0, 4) : [];
+    return {
+      recent_developments: arr(json.recent_developments),
+      infrastructure: arr(json.infrastructure),
+      heritage: arr(json.heritage),
+      sources: [...new Set(search.sources)].slice(0, 5),
+      fetched_at,
+    };
+  } catch {
+    return empty;
+  }
 }
