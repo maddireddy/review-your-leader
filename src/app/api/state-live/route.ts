@@ -51,8 +51,13 @@ export async function POST(request: NextRequest) {
     const confidence = Math.min(1, validation.confidence * sourceBonus);
     const changed = normalize(fact.value) !== normalize(state.chief_minister);
 
+    // A fact is "validated" when models agree + confidence clears the bar.
+    // Persistence to Supabase is SEPARATE — the UI shows validated live data
+    // immediately even if there's no database to persist it to.
+    const validated = confidence >= 0.75 && validation.agree;
+
     let committed = false;
-    if (confidence >= 0.75 && validation.agree) {
+    if (validated) {
       committed = await writeVerifiedFact({
         entity_type: 'state', entity_id: state.id, fact_key: 'chief_minister',
         fact_value: fact.value, fact_party: fact.party,
@@ -62,16 +67,18 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      status: committed ? 'updated' : (confidence < 0.75 ? 'low_confidence' : 'verified_same'),
-      chief_minister: committed ? fact.value : state.chief_minister,
+      status: committed ? 'updated' : validated ? 'verified' : 'low_confidence',
+      // Show the live-validated name even when not persisted (no Supabase)
+      chief_minister: validated ? fact.value : state.chief_minister,
       candidate: fact.value,
       cm_party: fact.party,
       confidence: Math.round(confidence * 100) / 100,
       changed,
-      committed,
+      committed,        // true only if written to DB
+      persisted: committed,
       sources: fact.sources,
       validation: validation.notes,
-      is_live: committed,
+      is_live: validated, // UI shows live badge whenever validated, DB or not
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'unknown';

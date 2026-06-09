@@ -47,41 +47,51 @@ export interface LiveFact {
 export async function fetchCurrentCM(stateName: string): Promise<LiveFact> {
   const fetched_at = new Date().toISOString();
 
-  // Step 1: web-search model pulls the live fact
+  // Step 1: web-search model pulls the live fact.
+  // Try compound model variants in order — names have changed across Groq releases.
   let raw = '';
   let sources: string[] = [];
-  try {
-    const resp = await groq().chat.completions.create({
-      model: MODELS.websearch,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a precise political-data researcher. Use web search to find the CURRENT, most up-to-date answer. Today's date matters — always prefer the most recent verified information. Cite your sources.`,
-        },
-        {
-          role: 'user',
-          content: `Who is the CURRENT Chief Minister of ${stateName}, India, as of today? Search the web for the latest information — there may have been a recent election or change. Provide: (1) full name, (2) their political party, (3) the date they took office if known. Be precise and cite sources.`,
-        },
-      ],
-      temperature: 0.1,
-      max_tokens: 800,
-    });
-    raw = resp.choices[0]?.message?.content || '';
-    // Groq compound returns executed tool info; extract any cited URLs
-    sources = extractUrls(raw);
-    // Some SDK versions expose executed_tools with search results
-    const exec = (resp.choices[0]?.message as { executed_tools?: { search_results?: { results?: { url: string }[] } }[] })?.executed_tools;
-    if (exec) {
-      for (const tool of exec) {
-        for (const r of tool.search_results?.results ?? []) {
-          if (r.url) sources.push(r.url);
+  let lastErr = '';
+  const candidates = [MODELS.websearch, MODELS.websearchFast, 'compound-beta', 'compound-beta-mini'];
+
+  for (const model of candidates) {
+    try {
+      const resp = await groq().chat.completions.create({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a precise political-data researcher. Use web search to find the CURRENT, most up-to-date answer. Today's date matters — always prefer the most recent verified information. Cite your sources.`,
+          },
+          {
+            role: 'user',
+            content: `Who is the CURRENT Chief Minister of ${stateName}, India, as of today? Search the web for the latest information — there may have been a recent election or change. Provide: (1) full name, (2) their political party, (3) the date they took office if known. Be precise and cite sources.`,
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 800,
+      });
+      raw = resp.choices[0]?.message?.content || '';
+      sources = extractUrls(raw);
+      const exec = (resp.choices[0]?.message as { executed_tools?: { search_results?: { results?: { url: string }[] } }[] })?.executed_tools;
+      if (exec) {
+        for (const tool of exec) {
+          for (const r of tool.search_results?.results ?? []) {
+            if (r.url) sources.push(r.url);
+          }
         }
       }
+      if (raw) break; // success
+    } catch (err) {
+      lastErr = err instanceof Error ? err.message : 'unknown';
+      // try next model name
     }
-  } catch (err) {
+  }
+
+  if (!raw) {
     return {
       key: 'chief_minister', value: '', sources: [], confidence: 0,
-      reasoning: `Web search failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      reasoning: `Web search unavailable (tried ${candidates.length} models). Last error: ${lastErr || 'no response'}`,
       fetched_at,
     };
   }
