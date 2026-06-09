@@ -107,7 +107,7 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
       exit={{ opacity: 0, x: -20 }}
     >
       {/* State + Landmark Hero Card */}
-      <div className="glass-card overflow-hidden">
+      <div className="glass-card-elevated overflow-hidden">
         {/* Dynamic party gradient stripe */}
         <div className="h-1.5 w-full" style={{ background: theme.gradient }} />
 

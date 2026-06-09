@@ -72,16 +72,19 @@ export default function HomePage() {
         <div className="flex items-center justify-between flex-shrink-0">
           <div>
             <h1
-              className="text-2xl sm:text-3xl font-bold text-white leading-tight"
+              className="text-2xl sm:text-3xl font-bold leading-tight"
               style={{ fontFamily: 'var(--font-rajdhani)' }}
             >
-              {view.level === 'country' && 'Explore India'}
-              {view.level === 'state' && view.selectedState?.name}
-              {view.level === 'district' && view.selectedDistrict?.name}
-              {view.level === 'constituency' && view.selectedConstituency?.name}
+              {view.level === 'country'
+                ? <><span className="text-white">Explore </span><span className="text-gradient">India</span></>
+                : <span className="text-white">
+                    {view.level === 'state' && view.selectedState?.name}
+                    {view.level === 'district' && view.selectedDistrict?.name}
+                    {view.level === 'constituency' && view.selectedConstituency?.name}
+                  </span>}
             </h1>
-            <p className="text-sm text-slate-400 mt-0.5">
-              {view.level === 'country' && 'Click any state to explore districts and representatives'}
+            <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1.5">
+              {view.level === 'country' && '36 states & UTs · Live-verified data'}
               {view.level === 'state' && 'Select a district to view constituencies'}
               {view.level === 'district' && 'Select a constituency to view your representative'}
               {view.level === 'constituency' && 'Your elected representative'}
@@ -126,7 +129,7 @@ export default function HomePage() {
         <div className="flex-1 min-h-0 flex gap-4">
           {/* Map panel */}
           <motion.div
-            className={`relative rounded-2xl overflow-hidden border border-slate-800/60 bg-slate-900/40 backdrop-blur-sm ${
+            className={`relative rounded-2xl overflow-hidden border border-indigo-500/10 bg-slate-900/30 backdrop-blur-sm shadow-2xl shadow-black/30 ${
               showPanel ? 'hidden lg:flex lg:flex-1' : 'flex flex-1'
             }`}
             layout
