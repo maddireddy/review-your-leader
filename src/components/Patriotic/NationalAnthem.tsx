@@ -17,9 +17,11 @@ import { Volume2, VolumeX, Play, Pause, X } from 'lucide-react';
  * Wikimedia Commons recording of the instrumental.
  */
 
+// Bundled in /public — real orchestral instrumental (Wikimedia Commons, public domain).
+// OGG ships in-repo (Chrome/Firefox/Edge). Add /public/anthem.mp3 for Safari support.
 const ANTHEM_SOURCES = [
+  '/anthem.ogg',
   '/anthem.mp3',
-  'https://upload.wikimedia.org/wikipedia/commons/5/5c/Jana_Gana_Mana_instrumental.ogg',
 ];
 
 export function NationalAnthem() {
