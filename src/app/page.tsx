@@ -12,7 +12,10 @@ import { StateInfo } from '@/lib/indiaData';
 import { DistrictInfo } from '@/lib/districtData';
 import { Info, RotateCcw, ChevronRight } from 'lucide-react';
 import { SearchBar } from '@/components/Search/SearchBar';
+import { ElectionCalendar } from '@/components/Civic/ElectionCalendar';
 import { INDIA_STATES } from '@/lib/indiaData';
+import Link from 'next/link';
+import { BarChart3 } from 'lucide-react';
 
 // Dynamic import to avoid SSR issues with react-simple-maps
 const IndiaMap = dynamic(
@@ -91,6 +94,12 @@ export default function HomePage() {
                 if (state) handleStateSelect(state);
               }}
             />
+            <Link
+              href="/dashboard/parties"
+              className="hidden sm:flex items-center gap-1.5 text-sm text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800/60 transition-all whitespace-nowrap"
+            >
+              <BarChart3 className="w-3.5 h-3.5" /> Dashboard
+            </Link>
             {view.level !== 'country' && (
               <button
                 onClick={() => setView({ level: 'country' })}
@@ -158,6 +167,18 @@ export default function HomePage() {
 
             <IndiaMap onStateSelect={handleStateSelect} selectedState={view.selectedState} />
           </motion.div>
+
+          {/* Country-level election calendar panel */}
+          {view.level === 'country' && (
+            <motion.div
+              className="hidden lg:block w-[340px] flex-shrink-0 overflow-y-auto"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <ElectionCalendar />
+            </motion.div>
+          )}
 
           {/* Side panel */}
           <AnimatePresence mode="wait">

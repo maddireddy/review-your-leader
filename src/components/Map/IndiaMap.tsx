@@ -13,8 +13,11 @@ import { INDIA_STATES, StateInfo } from '@/lib/indiaData';
 import { State } from '@/types';
 import { trackEvent } from '@/lib/posthog';
 import { getMapFillColor, MAP_LEGEND } from '@/lib/colorSystem';
+import { getTurnout, getTurnoutColor, TURNOUT_LEGEND } from '@/lib/turnoutData';
 
 const INDIA_TOPO_URL = '/india-states.json';
+
+type ViewMode = 'party' | 'turnout';
 
 interface TooltipState {
   x: number;
@@ -25,6 +28,7 @@ interface TooltipState {
   landmarkEmoji?: string;
   name: string;
   capital: string;
+  turnout?: number;
 }
 
 interface IndiaMapProps {
@@ -33,7 +37,12 @@ interface IndiaMapProps {
 }
 
 
-function getStateColor(stateId: string, isSelected: boolean, isHovered: boolean) {
+function getStateColor(stateId: string, isSelected: boolean, isHovered: boolean, mode: ViewMode) {
+  if (mode === 'turnout') {
+    const base = getTurnoutColor(getTurnout(stateId));
+    if (isSelected) return '#818CF8';
+    return isHovered ? base : base + 'C0';
+  }
   const state = INDIA_STATES.find(s => s.id === stateId) as StateInfo | undefined;
   return getMapFillColor(state?.ruling_party || 'default', isSelected, isHovered);
 }
@@ -41,6 +50,7 @@ function getStateColor(stateId: string, isSelected: boolean, isHovered: boolean)
 export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredState, setHoveredState] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('party');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleStateClick = useCallback(
@@ -76,6 +86,7 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
           party: si.ruling_party,
           landmark: si.landmark,
           landmarkEmoji: si.landmark_emoji,
+          turnout: getTurnout(state.id),
         });
       }
     },
@@ -84,6 +95,21 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
 
   return (
     <div ref={containerRef} className="relative w-full h-full select-none">
+      {/* View mode toggle */}
+      <div className="absolute top-4 left-4 z-20 flex gap-1 p-1 bg-slate-900/80 backdrop-blur-sm border border-slate-700/60 rounded-xl">
+        {(['party', 'turnout'] as ViewMode[]).map(m => (
+          <button
+            key={m}
+            onClick={() => setViewMode(m)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              viewMode === m ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {m === 'party' ? '🎗 Party' : '🗳 Turnout'}
+          </button>
+        ))}
+      </div>
+
       {/* Tooltip */}
       <AnimatePresence>
         {tooltip && (
@@ -105,6 +131,11 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
             )}
             {tooltip.landmark && (
               <div className="text-slate-400 text-xs mt-0.5">{tooltip.landmarkEmoji} {tooltip.landmark}</div>
+            )}
+            {viewMode === 'turnout' && tooltip.turnout !== undefined && (
+              <div className="text-xs mt-1 font-semibold" style={{ color: getTurnoutColor(tooltip.turnout) }}>
+                🗳 Turnout: {tooltip.turnout}%
+              </div>
             )}
           </motion.div>
         )}
@@ -146,7 +177,7 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
                     style={{
                       default: {
                         fill: state
-                          ? getStateColor(state.id, isSelected, false)
+                          ? getStateColor(state.id, isSelected, false, viewMode)
                           : '#1e293b',
                         stroke: '#0f172a',
                         strokeWidth: 0.5,
@@ -155,7 +186,7 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
                       },
                       hover: {
                         fill: state
-                          ? getStateColor(state.id, isSelected, true)
+                          ? getStateColor(state.id, isSelected, true, viewMode)
                           : '#334155',
                         stroke: '#818cf8',
                         strokeWidth: 1,
@@ -203,10 +234,12 @@ export function IndiaMap({ onStateSelect, selectedState }: IndiaMapProps) {
         </ZoomableGroup>
       </ComposableMap>
 
-      {/* Legend — uses colorSystem MAP_LEGEND */}
+      {/* Legend — switches with view mode */}
       <div className="absolute bottom-4 left-4 glass-card p-3 text-xs space-y-1.5">
-        <div className="text-slate-400 font-semibold mb-2 uppercase tracking-wider text-[10px]">Ruling Party</div>
-        {MAP_LEGEND.map(({ label, color }) => (
+        <div className="text-slate-400 font-semibold mb-2 uppercase tracking-wider text-[10px]">
+          {viewMode === 'party' ? 'Ruling Party' : 'Voter Turnout 2024'}
+        </div>
+        {(viewMode === 'party' ? MAP_LEGEND : TURNOUT_LEGEND).map(({ label, color }) => (
           <div key={label} className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color + '70', border: `1px solid ${color}` }} />
             <span className="text-slate-300">{label}</span>

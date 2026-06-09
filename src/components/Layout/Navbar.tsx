@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Search, MapPin, Menu, X } from 'lucide-react';
+import { MapPin, Menu, X, BarChart3 } from 'lucide-react';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -32,18 +33,17 @@ export function Navbar() {
             <Link href="/" className="text-sm text-slate-300 hover:text-white transition-colors flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5" /> Explore Map
             </Link>
+            <Link href="/dashboard/parties" className="text-sm text-slate-300 hover:text-white transition-colors flex items-center gap-1">
+              <BarChart3 className="w-3.5 h-3.5" /> Dashboard
+            </Link>
             <Link href="/about" className="text-sm text-slate-300 hover:text-white transition-colors">
               About
             </Link>
           </div>
 
           {/* Right */}
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 border border-slate-700/60 rounded-lg text-sm text-slate-400 cursor-pointer hover:border-indigo-500/60 transition-colors">
-              <Search className="w-3.5 h-3.5" />
-              <span>Search leaders...</span>
-              <kbd className="ml-2 text-xs bg-slate-700 px-1.5 py-0.5 rounded text-slate-300">⌘K</kbd>
-            </div>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <button
               className="md:hidden text-slate-300 hover:text-white"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -60,6 +60,9 @@ export function Navbar() {
           <div className="px-4 py-3 space-y-2">
             <Link href="/" className="block text-sm text-slate-300 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
               Explore Map
+            </Link>
+            <Link href="/dashboard/parties" className="block text-sm text-slate-300 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
+              Dashboard
             </Link>
             <Link href="/about" className="block text-sm text-slate-300 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
               About
