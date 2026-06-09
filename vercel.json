@@ -4,6 +4,12 @@
   "devCommand": "next dev",
   "installCommand": "npm install --legacy-peer-deps",
   "regions": ["bom1"],
+  "crons": [
+    {
+      "path": "/api/cron/refresh-cache",
+      "schedule": "30 20 * * *"
+    }
+  ],
   "env": {
     "NEXT_PUBLIC_APP_URL": "https://reviewyourleader.com"
   }

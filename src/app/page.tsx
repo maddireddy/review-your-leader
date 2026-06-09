@@ -11,6 +11,8 @@ import { MapView, State, Constituency } from '@/types';
 import { StateInfo } from '@/lib/indiaData';
 import { DistrictInfo } from '@/lib/districtData';
 import { Info, RotateCcw, ChevronRight } from 'lucide-react';
+import { SearchBar } from '@/components/Search/SearchBar';
+import { INDIA_STATES } from '@/lib/indiaData';
 
 // Dynamic import to avoid SSR issues with react-simple-maps
 const IndiaMap = dynamic(
@@ -82,14 +84,22 @@ export default function HomePage() {
               {view.level === 'constituency' && 'Your elected representative'}
             </p>
           </div>
-          {view.level !== 'country' && (
-            <button
-              onClick={() => setView({ level: 'country' })}
-              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800/60 transition-all"
-            >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <SearchBar
+              onStateSelect={(stateId) => {
+                const state = INDIA_STATES.find(s => s.id === stateId);
+                if (state) handleStateSelect(state);
+              }}
+            />
+            {view.level !== 'country' && (
+              <button
+                onClick={() => setView({ level: 'country' })}
+                className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-slate-800/60 transition-all whitespace-nowrap"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reset
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Breadcrumb */}

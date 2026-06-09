@@ -7,6 +7,7 @@ import { StateInfo } from '@/lib/indiaData';
 import { getDistrictsByState, DistrictInfo } from '@/lib/districtData';
 import { formatNumber } from '@/lib/utils';
 import { getPartyTheme, VALIDATION_COLORS } from '@/lib/colorSystem';
+import { NewsFeed } from '@/components/Civic/NewsFeed';
 
 interface StatePanelProps {
   state: StateInfo;
@@ -220,6 +221,9 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
           )}
         </AnimatePresence>
       </motion.div>
+
+      {/* News Feed */}
+      <NewsFeed entityName={state.name} entityType="state" />
 
       {/* Districts List */}
       <div>
