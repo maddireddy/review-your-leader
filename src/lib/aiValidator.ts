@@ -2,7 +2,7 @@
  * ReviewYourLeader — 3-Level AI Validation Pipeline
  *
  * Level 1 (Primary):   Groq LLaMA 3.3 70B   — main response
- * Level 2 (Validator): Groq Mixtral 8x7B     — fact-checks Level 1
+ * Level 2 (Validator): Groq LLaMA 3.1 8B Instant — fact-checks Level 1 (Mixtral decommissioned)
  * Level 3 (Arbiter):   Groq Gemma2 9B        — resolves conflicts
  *
  * Ground Truth Grounding:
@@ -36,9 +36,13 @@ export interface FactViolation {
 }
 
 // ─── Groq models ─────────────────────────────────────────────
+// mixtral-8x7b-32768 was decommissioned by Groq (June 2025)
+// Replacements per https://console.groq.com/docs/deprecations:
+//   Validator → llama-3.1-8b-instant  (fast, accurate, great for fact-checking)
+//   Arbiter   → gemma2-9b-it          (unchanged — still active)
 const MODELS = {
-  primary:   'llama-3.3-70b-versatile',   // Level 1 — most capable
-  validator: 'mixtral-8x7b-32768',         // Level 2 — cross-checks
+  primary:   'llama-3.3-70b-versatile',   // Level 1 — most capable, 70B
+  validator: 'llama-3.1-8b-instant',      // Level 2 — fast fact-checker (replaces Mixtral)
   arbiter:   'gemma2-9b-it',              // Level 3 — tie-breaker
 } as const;
 

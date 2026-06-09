@@ -212,7 +212,7 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
               <div className="p-3 bg-violet-500/5 text-xs text-slate-300 leading-relaxed">
                 <div className="flex items-center gap-1.5 mb-2">
                   <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                  <span className="text-violet-400 font-semibold">Groq LLaMA 3.3 70B · Ground-truth anchored</span>
+                  <span className="text-violet-400 font-semibold">LLaMA 3.3 70B + LLaMA 3.1 8B + Gemma2 · Ground-truth anchored</span>
                 </div>
                 {aiInsight}
               </div>
