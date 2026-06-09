@@ -23,15 +23,61 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
   } | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [showAll, setShowAll] = useState(false);
+
+  // ── Live CM overlay (autonomous pipeline) ─────────────────────
+  const [liveCM, setLiveCM] = useState<{
+    name: string; party?: string; isLive: boolean; confidence?: number;
+    sources?: string[]; verifiedAt?: string;
+  } | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
   const theme = getPartyTheme(state.ruling_party);
+  const cmName = liveCM?.name || state.chief_minister;
+  const cmParty = liveCM?.party || state.cm_party;
 
   const visibleDistricts = showAll ? districts : districts.slice(0, 8);
 
-  // Reset insight when state changes — deferred to avoid cascading renders
+  // Reset + load live overlay when state changes
   useEffect(() => {
-    const timer = setTimeout(() => setAiInsight(''), 0);
+    const timer = setTimeout(() => {
+      setAiInsight('');
+      setLiveCM(null);
+    }, 0);
+    // Fetch any already-verified live fact (fast, cached)
+    fetch(`/api/state-live?stateId=${state.id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.is_live && d.chief_minister) {
+          setLiveCM({
+            name: d.chief_minister, party: d.cm_party, isLive: true,
+            confidence: d.confidence, sources: d.sources, verifiedAt: d.verified_at,
+          });
+        }
+      })
+      .catch(() => {});
     return () => clearTimeout(timer);
   }, [state.id]);
+
+  // On-demand live verification — triggers the full web-search + validation pipeline
+  async function verifyLive() {
+    setVerifying(true);
+    try {
+      const res = await fetch('/api/state-live', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stateId: state.id }),
+      });
+      const d = await res.json();
+      if (d.chief_minister) {
+        setLiveCM({
+          name: d.chief_minister, party: d.cm_party, isLive: d.is_live,
+          confidence: d.confidence, sources: d.sources,
+          verifiedAt: new Date().toISOString(),
+        });
+      }
+    } catch { /* ignore */ }
+    finally { setVerifying(false); }
+  }
 
   async function fetchAIInsight(forceRefresh = false) {
     setLoadingAI(true);
@@ -114,15 +160,34 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-          Current {state.is_ut ? 'Lt. Governor / CM' : 'Chief Minister'}
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Current {state.is_ut ? 'Lt. Governor / CM' : 'Chief Minister'}
+          </span>
+          {/* Live verify button */}
+          <button
+            onClick={verifyLive}
+            disabled={verifying}
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border transition-all disabled:opacity-50"
+            style={{
+              borderColor: liveCM?.isLive ? 'rgba(34,197,94,0.4)' : 'rgba(148,163,184,0.3)',
+              background: liveCM?.isLive ? 'rgba(34,197,94,0.1)' : 'rgba(148,163,184,0.05)',
+              color: liveCM?.isLive ? '#4ade80' : '#94a3b8',
+            }}
+            title="Fetch latest via live web search + 3-model validation"
+          >
+            {verifying
+              ? <><Loader2 className="w-2.5 h-2.5 animate-spin" /> Verifying…</>
+              : liveCM?.isLive
+                ? <><ShieldCheck className="w-2.5 h-2.5" /> Live verified</>
+                : <><RefreshCw className="w-2.5 h-2.5" /> Verify live</>}
+          </button>
         </div>
 
         <div className="flex items-center gap-3 mb-3">
-          {/* CM Avatar */}
           {/* CM Avatar — uses dynamic party theme */}
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0"
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 relative"
             style={{
               background: theme.light,
               border: `2px solid ${theme.border}`,
@@ -130,12 +195,15 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
               boxShadow: theme.glow,
             }}
           >
-            {state.chief_minister.split(' ').map(w => w[0]).join('').slice(0, 2)}
+            {cmName.split(' ').map(w => w[0]).join('').slice(0, 2)}
+            {liveCM?.isLive && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 border-2 border-slate-900 animate-pulse" />
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-bold text-white leading-tight" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-              {state.chief_minister}
+              {cmName}
             </h2>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               <span
@@ -144,10 +212,35 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
               >
                 {state.ruling_party}
               </span>
-              <span className="text-xs text-slate-500 truncate">{state.cm_party}</span>
+              <span className="text-xs text-slate-500 truncate">{cmParty}</span>
             </div>
           </div>
         </div>
+
+        {/* Live verification provenance */}
+        {liveCM?.isLive && (
+          <motion.div
+            className="mb-3 px-2.5 py-1.5 rounded-lg text-[10px]"
+            style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+          >
+            <div className="flex items-center gap-1.5 text-green-400">
+              <ShieldCheck className="w-3 h-3" />
+              <span className="font-semibold">Verified live</span>
+              {liveCM.confidence != null && (
+                <span className="text-slate-400">· {Math.round(liveCM.confidence * 100)}% confidence</span>
+              )}
+            </div>
+            {liveCM.sources && liveCM.sources.length > 0 && (
+              <div className="text-slate-500 mt-0.5 truncate">
+                Sources: {liveCM.sources.slice(0, 2).map(s => {
+                  try { return new URL(s).hostname.replace('www.', ''); } catch { return s; }
+                }).join(', ')}
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* AI Insight Button + Result */}
         <AnimatePresence>
