@@ -238,7 +238,7 @@ CREATE INDEX IF NOT EXISTS idx_mla_perf_mla          ON mla_performance(mla_name
 CREATE TABLE IF NOT EXISTS election_cycles (
   id                  TEXT PRIMARY KEY,      -- 'GE-2024' | 'TN-2021' | 'TG-2023'
   election_type       TEXT NOT NULL,         -- 'general' | 'state' | 'bypolls'
-  state_id            TEXT REFERENCES states(id),  -- NULL for general elections
+  state_id            TEXT,                          -- NULL for general elections; no FK — states seeded via API
   year                INTEGER NOT NULL,
   phase_count         INTEGER DEFAULT 1,
   schedule_start      DATE,
