@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Landmark, ArrowRight, Vote, MapPin, ChevronDown, ChevronUp, Grid3x3, User } from 'lucide-react';
+import { Landmark, ArrowRight, Vote, MapPin, ChevronDown, ChevronUp, Grid3x3, User, X } from 'lucide-react';
 import { DistrictInfo, getMandalsByDistrict } from '@/lib/districtData';
-import { getAssemblyByDistrict, hasRealData, getPartyColor } from '@/lib/constituencyData';
+import { getAssemblyByDistrict, hasRealData, getPartyColor, AssemblyConstituency } from '@/lib/constituencyData';
 import { Constituency } from '@/types';
 import { formatNumber } from '@/lib/utils';
 import { CONSTITUENCY_COLORS } from '@/lib/colorSystem';
@@ -14,12 +14,27 @@ interface DistrictPanelProps {
   onConstituencySelect: (constituency: Constituency) => void;
 }
 
+interface MandalDetail {
+  name: string;
+  constituency?: AssemblyConstituency;
+}
+
 export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelProps) {
   const realSeats = getAssemblyByDistrict(district.id);
   const hasReal = hasRealData(district.id);
-  const mandals = getMandalsByDistrict(district.id);
+  const genericMandals = getMandalsByDistrict(district.id);
   const [showMandals, setShowMandals] = useState(false);
   const [showAllAssembly, setShowAllAssembly] = useState(false);
+  const [selectedMandal, setSelectedMandal] = useState<MandalDetail | null>(null);
+
+  // Aggregate mandals from real constituency data when available
+  const realMandalList: MandalDetail[] = hasReal
+    ? realSeats.flatMap(seat =>
+        (seat.mandals || []).map(m => ({ name: m, constituency: seat }))
+      )
+    : [];
+  const useRealMandals = realMandalList.length > 0;
+  const mandals = useRealMandals ? [] : genericMandals; // generic used only as fallback
 
   // Build Lok Sabha placeholder seats (one per seat count)
   const parlConstituencies: Constituency[] = Array.from({ length: district.lok_sabha_seats }, (_, i) => ({
@@ -92,6 +107,67 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
         </div>
       </div>
 
+      {/* Mandal detail popup */}
+      <AnimatePresence>
+        {selectedMandal && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="rounded-xl border border-green-500/30 bg-green-900/20 p-4"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Grid3x3 className="w-4 h-4 text-green-400" />
+                  <span className="font-bold text-white text-base">{selectedMandal.name} Mandal</span>
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">{district.name} District · Telangana</div>
+              </div>
+              <button onClick={() => setSelectedMandal(null)} className="text-slate-500 hover:text-white p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {selectedMandal.constituency && (
+              <div className="space-y-2">
+                <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Assembly Constituency</div>
+                <div className="flex items-center justify-between rounded-lg bg-slate-800/60 border border-slate-700/40 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Vote className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-sm text-white font-semibold">{selectedMandal.constituency.name}</span>
+                    {selectedMandal.constituency.reserved && (
+                      <span className="text-xs px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">{selectedMandal.constituency.reserved}</span>
+                    )}
+                  </div>
+                </div>
+                {selectedMandal.constituency.current_mla && (
+                  <div className="flex items-center justify-between rounded-lg bg-slate-800/60 border border-slate-700/40 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-amber-400" />
+                      <div>
+                        <div className="text-sm text-white font-medium">{selectedMandal.constituency.current_mla}</div>
+                        <div className="text-xs text-slate-400">Current MLA</div>
+                      </div>
+                    </div>
+                    {selectedMandal.constituency.mla_party && (
+                      <span className="text-xs px-2 py-1 rounded font-bold"
+                        style={{ background: getPartyColor(selectedMandal.constituency.mla_party).bg + '22',
+                          color: getPartyColor(selectedMandal.constituency.mla_party).bg,
+                          border: `1px solid ${getPartyColor(selectedMandal.constituency.mla_party).bg}44` }}>
+                        {selectedMandal.constituency.mla_party}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="text-xs text-slate-500 mt-1">
+                  Gram Panchayat details and village-level data coming soon.
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mandals section */}
       <div>
         <button
@@ -103,6 +179,7 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
             <span className="text-sm font-medium text-slate-300">
               Mandals / Revenue Circles ({district.mandals_count})
             </span>
+            {useRealMandals && <span className="text-xs text-green-500/70">· click to explore</span>}
           </div>
           {showMandals ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
         </button>
@@ -115,21 +192,24 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              {/* If real seats have mandal lists, group by constituency */}
-              {hasReal && realSeats.some(s => s.mandals?.length) ? (
-                <div className="mt-2 space-y-2">
-                  {realSeats.filter(s => s.mandals?.length).map(seat => (
-                    <div key={seat.id} className="rounded-lg bg-slate-800/40 border border-slate-700/40 p-2">
-                      <div className="text-xs font-semibold text-green-400 mb-1.5">{seat.name} Constituency</div>
-                      <div className="grid grid-cols-2 gap-1">
-                        {seat.mandals!.map(m => (
-                          <div key={m} className="px-2 py-1 rounded bg-slate-800/60 text-xs text-slate-300 flex items-center gap-1">
-                            <div className="w-1 h-1 rounded-full bg-green-400/60 flex-shrink-0" />
-                            {m}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              {useRealMandals ? (
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                  {realMandalList.map((m, idx) => (
+                    <motion.button
+                      key={`${m.name}-${idx}`}
+                      onClick={() => setSelectedMandal(selectedMandal?.name === m.name ? null : m)}
+                      className="px-3 py-2 rounded-lg text-xs text-slate-300 flex items-center gap-1.5 text-left transition-all hover:text-white"
+                      style={{
+                        background: selectedMandal?.name === m.name ? 'rgba(34,197,94,0.15)' : 'rgba(30,41,59,0.4)',
+                        border: selectedMandal?.name === m.name ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(71,85,105,0.4)',
+                      }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: idx * 0.02 }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-400/70 flex-shrink-0" />
+                      <span className="truncate">{m.name}</span>
+                    </motion.button>
                   ))}
                 </div>
               ) : (
