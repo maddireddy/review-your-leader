@@ -6,7 +6,7 @@ import {
   User, Clock, MessageSquare, BarChart2,
   Globe, Briefcase, CheckCircle, AlertCircle,
   FileText, Users, TrendingUp, Award, Scale,
-  ExternalLink, ChevronDown, ChevronUp
+  ExternalLink, ChevronDown, ChevronUp, Sparkles, ArrowRight
 } from 'lucide-react';
 import { Constituency, Representative } from '@/types';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import { getPartyTheme, getAttendanceTheme, CONSTITUENCY_COLORS } from '@/lib/co
 import { AIInsightPanel } from './AIInsightPanel';
 import { TenureTimeline } from './TenureTimeline';
 import { RepPhoto } from '@/components/UI/RepPhoto';
+import { PoliticianJourney } from './PoliticianJourney';
 import { CitizenRating } from '@/components/Civic/CitizenRating';
 import { IssueTracker } from '@/components/Civic/IssueTracker';
 import { NewsFeed } from '@/components/Civic/NewsFeed';
@@ -84,6 +85,7 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
   const rep = findRepresentative(constituency);
   const theme = getPartyTheme(rep.party_short || rep.party);
   const [tab, setTab] = useState<'overview' | 'performance' | 'election' | 'history' | 'ai'>('overview');
+  const [showJourney, setShowJourney] = useState(false);
   const [showFullBio, setShowFullBio] = useState(false);
   const constColors = constituency.type === 'parliament' ? CONSTITUENCY_COLORS.parliament : CONSTITUENCY_COLORS.assembly;
 
@@ -200,8 +202,31 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
               Since {new Date(rep.tenure_start).getFullYear()}
             </div>
           </div>
+
+          {/* Politician Journey CTA */}
+          <button
+            onClick={() => setShowJourney(true)}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all"
+            style={{ background: theme.light, color: theme.text, border: `1px solid ${theme.border}` }}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            View Full Political Journey
+            <ArrowRight className="w-3 h-3" />
+          </button>
         </div>
       </div>
+
+      {/* Politician Journey Modal */}
+      {showJourney && (
+        <PoliticianJourney
+          name={rep.name}
+          stateId={rep.state_id}
+          role={rep.constituency_type === 'parliament' ? 'Member of Parliament' : 'Member of Legislative Assembly'}
+          party={rep.party}
+          partyColor={theme.primary}
+          onClose={() => setShowJourney(false)}
+        />
+      )}
 
       {/* ── Tabs ──────────────────────────────────────────────── */}
       <div className="flex gap-1 p-1 bg-slate-900/60 rounded-xl border border-slate-800/60 overflow-x-auto">

@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Loader2, Map, User, Building2 } from 'lucide-react';
+import { Search, X, Loader2, Map, User, Building2, Sparkles } from 'lucide-react';
 import { RepPhoto } from '@/components/UI/RepPhoto';
+import { PoliticianJourney } from '@/components/Profile/PoliticianJourney';
 
 interface SearchResult {
   type: 'state' | 'representative' | 'constituency' | 'district';
@@ -12,6 +13,8 @@ interface SearchResult {
   subtitle?: string;
   score?: number;
   wikipedia_slug?: string;
+  state_id?: string;
+  party?: string;
 }
 
 interface SearchBarProps {
@@ -31,6 +34,7 @@ export function SearchBar({ onStateSelect, onRepSelect }: SearchBarProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [journeyTarget, setJourneyTarget] = useState<SearchResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -119,7 +123,16 @@ export function SearchBar({ onStateSelect, onRepSelect }: SearchBarProps) {
                   <div className="text-sm font-medium text-white truncate">{r.name}</div>
                   {r.subtitle && <div className="text-xs text-slate-500 truncate mt-0.5">{r.subtitle}</div>}
                 </div>
-                {r.score && r.score > 0.9 && (
+                {r.type === 'representative' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setOpen(false); setJourneyTarget(r); }}
+                    className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 transition-colors flex-shrink-0"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    Journey
+                  </button>
+                )}
+                {r.type !== 'representative' && r.score && r.score > 0.9 && (
                   <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded-full flex-shrink-0">Top</span>
                 )}
               </motion.button>
@@ -130,6 +143,15 @@ export function SearchBar({ onStateSelect, onRepSelect }: SearchBarProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      {journeyTarget && (
+        <PoliticianJourney
+          name={journeyTarget.name}
+          stateId={journeyTarget.state_id || ''}
+          role="Politician"
+          party={journeyTarget.party || (journeyTarget.subtitle?.split('·')[0] ?? '').trim()}
+          onClose={() => setJourneyTarget(null)}
+        />
+      )}
     </div>
   );
 }
