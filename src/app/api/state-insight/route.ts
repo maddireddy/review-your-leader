@@ -27,14 +27,16 @@ export async function POST(request: NextRequest) {
       landmark: state.landmark,
     };
 
-    // ── User prompt ──────────────────────────────────────────────
-    const userPrompt = `Provide a factual 3-sentence governance briefing on ${cmName},
-Chief Minister of ${state.name} (${cmParty}):
-1. What major policy or development initiative has been launched recently?
-2. What is a notable achievement or challenge in infrastructure/economy/welfare?
-3. What is one key ongoing project or campaign in the state?
+    // ── User prompt — names the CM explicitly multiple times to anchor models ──
+    const userPrompt = `Write a factual 3-sentence governance briefing about ${cmName}, \
+who is the Chief Minister of ${state.name} representing ${cmParty}.
+The Chief Minister is ${cmName}. Do not mention any other politician as CM.
 
-Stay grounded in verified facts. Be specific, neutral, and informative.`;
+1. What major policy or development initiative has ${cmName} launched recently?
+2. What is a notable achievement or challenge under ${cmName}'s leadership in infrastructure/economy/welfare?
+3. What is one key ongoing project in ${state.name} under Chief Minister ${cmName}?
+
+Be specific, neutral, and informative. Use "${cmName}" by name in each sentence.`;
 
     // ── Run 3-level validation pipeline ─────────────────────────
     // Pass verified_at as groundTruthVersion so the cache busts whenever CM changes

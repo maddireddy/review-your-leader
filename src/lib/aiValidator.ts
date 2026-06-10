@@ -59,6 +59,10 @@ async function groqClient() {
 
 // ─── Ground truth system prompt builder ──────────────────────
 function buildGroundedSystemPrompt(groundTruth: GroundTruth): string {
+  const cm = groundTruth.chief_minister || '';
+  const party = groundTruth.cm_party || groundTruth.ruling_party || '';
+  const state = groundTruth.state_name || '';
+
   const facts = Object.entries(groundTruth)
     .map(([k, v]) => `• ${k}: ${v}`)
     .join('\n');
@@ -66,16 +70,20 @@ function buildGroundedSystemPrompt(groundTruth: GroundTruth): string {
   return `You are an expert Indian political analyst providing accurate, neutral, and up-to-date information.
 
 ═══════════════════════════════════════════════
-VERIFIED FACTS (from our authoritative database — NEVER contradict these):
+⚠ MANDATORY VERIFIED FACTS — DATABASE AUTHORITATIVE — OVERRIDE YOUR TRAINING DATA:
 ${facts}
 ═══════════════════════════════════════════════
 
+⛔ ABSOLUTE PROHIBITION: Do NOT mention any previous Chief Ministers of ${state}.
+   The CURRENT Chief Minister is ${cm} (${party}). This is final and non-negotiable.
+   Your training data may be outdated. Trust ONLY the verified facts above.
+
 CRITICAL RULES:
-1. Always use the verified facts above as ground truth
-2. Never contradict the verified CM name, party, or tenure dates
-3. If you are unsure about recent events, say "recent developments suggest..."
+1. ONLY refer to "${cm}" as Chief Minister — NEVER use any other person's name as CM
+2. If your training data contradicts the verified CM name, your training data is WRONG — ignore it
+3. Build your entire response around ${cm} and ${party}'s governance
 4. Keep responses under 120 words, factual and neutral
-5. Focus on governance, policy, and development — not personal opinions`;
+5. Never mention the name of any former Chief Minister of ${state}`;
 }
 
 // ─── Single model call ────────────────────────────────────────
@@ -105,29 +113,60 @@ async function callModel(
 }
 
 // ─── Fact-check a response against ground truth ───────────────
+// Detects ANY occurrence of a wrong person being called CM, or any
+// known former CM name appearing in a CM context.
 function checkFacts(response: string, groundTruth: GroundTruth): FactViolation[] {
   const violations: FactViolation[] = [];
-  for (const [key, value] of Object.entries(groundTruth)) {
-    // Only check name-type facts (CM, party, etc.)
-    if (!['chief_minister', 'cm_party', 'capital', 'ruling_party'].includes(key)) continue;
-    const valueLower = value.toLowerCase();
+  const correctCM = groundTruth.chief_minister || '';
+  if (!correctCM) return violations;
 
-    // Check if response mentions contradicting names
-    if (key === 'chief_minister') {
-      // Extract any CM-like mentions from response
-      const cmPattern = /(?:chief minister|cm)\s+(?:is\s+)?([A-Z][a-z]+(?:\s+[A-Z]\.?\s*[A-Za-z]+){0,3})/gi;
-      const matches = [...response.matchAll(cmPattern)];
-      for (const match of matches) {
-        const mentioned = match[1].trim().toLowerCase();
-        if (mentioned && !valueLower.includes(mentioned.split(' ')[0]) && !mentioned.includes(value.toLowerCase().split(' ')[0])) {
-          violations.push({
-            claim: `CM mentioned as "${match[1]}"`,
-            expected: value,
-            found: match[1],
-          });
-        }
+  const responseLower = response.toLowerCase();
+  const correctLower = correctCM.toLowerCase();
+
+  // Extract all significant words from the correct CM name (length > 2, not initials)
+  const correctNameWords = correctLower.split(/\s+/).filter(w => w.replace(/\./g, '').length > 2);
+
+  // Pattern 1: "Chief Minister <Name>" or "CM <Name>" — any name that isn't the correct CM
+  const cmPattern = /(?:chief\s+minister|(?<!\w)cm(?!\w))\s+(?:is\s+)?([A-Z][a-zA-Z.]+(?:\s+[A-Z][a-zA-Z.]+){0,4})/gi;
+  for (const match of response.matchAll(cmPattern)) {
+    const mentioned = match[1].trim();
+    const mentionedLower = mentioned.toLowerCase();
+    const isCorrect = correctNameWords.some(w => mentionedLower.includes(w)) ||
+                      mentionedLower.split(/\s+/).some(w => correctLower.includes(w));
+    if (!isCorrect) {
+      violations.push({ claim: `CM named as "${mentioned}"`, expected: correctCM, found: mentioned });
+    }
+  }
+
+  // Pattern 2: Any proper name appearing alongside "chief minister" in a 10-word window
+  const sentences = response.split(/[.!?]/);
+  for (const sentence of sentences) {
+    if (!sentence.toLowerCase().includes('chief minister') && !sentence.toLowerCase().includes(' cm ')) continue;
+    // Look for capitalized names in this sentence that aren't the correct CM
+    const namePattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-zA-Z.]*){1,3})\b/g;
+    for (const match of sentence.matchAll(namePattern)) {
+      const cand = match[1].toLowerCase();
+      const isCorrect = correctNameWords.some(w => cand.includes(w));
+      // Skip common non-person words
+      const skipWords = ['chief minister', 'prime minister', 'india', 'state', 'government',
+        'party', 'development', 'initiative', 'tamil', 'andhra', 'karnataka', 'kerala'];
+      if (!isCorrect && !skipWords.some(sw => cand.includes(sw)) && cand.split(' ').length >= 2) {
+        violations.push({ claim: `Name "${match[1]}" near CM mention`, expected: correctCM, found: match[1] });
       }
     }
+  }
+
+  // Pattern 3: Direct name check — if any word from a known-wrong CM name appears
+  // Detect by checking if the response contains the correct CM name at all
+  const containsCorrectName = correctNameWords.length > 0 &&
+    correctNameWords.some(w => responseLower.includes(w));
+
+  if (!containsCorrectName && response.trim().length > 30) {
+    violations.push({
+      claim: 'Response does not mention the correct CM',
+      expected: correctCM,
+      found: '(missing)',
+    });
   }
 
   return violations;
@@ -144,14 +183,39 @@ function computeSimilarity(a: string, b: string): number {
 }
 
 // ─── Auto-correct fact violations in a response ──────────────
+// Comprehensive rewrite: strips every wrong name and rewrites CM references
 function autoCorrect(response: string, violations: FactViolation[], groundTruth: GroundTruth): string {
+  const correctCM = groundTruth.chief_minister;
+  if (!correctCM) return response;
+
   let corrected = response;
-  for (const v of violations) {
-    // Replace wrong CM name with correct one
-    if (groundTruth.chief_minister) {
-      corrected = corrected.replace(new RegExp(v.found, 'gi'), groundTruth.chief_minister);
-    }
+
+  // Collect all wrong names found
+  const wrongNames = [...new Set(
+    violations
+      .map(v => v.found)
+      .filter(f => f !== '(missing)' && f.length > 2)
+  )];
+
+  // Replace each wrong name occurrence with the correct CM name
+  for (const wrong of wrongNames) {
+    // Escape regex special chars
+    const escaped = wrong.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    corrected = corrected.replace(new RegExp(escaped, 'gi'), correctCM);
   }
+
+  // If the response still doesn't contain the correct CM name after substitution,
+  // prepend a corrective sentence to anchor the response
+  const correctLower = correctCM.toLowerCase();
+  const correctedLower = corrected.toLowerCase();
+  const nameWords = correctLower.split(/\s+/).filter(w => w.replace(/\./g, '').length > 2);
+  const stillMissing = nameWords.length > 0 && !nameWords.some(w => correctedLower.includes(w));
+
+  if (stillMissing) {
+    const party = groundTruth.cm_party || groundTruth.ruling_party || '';
+    corrected = `${correctCM} (${party}) serves as the current Chief Minister. ` + corrected;
+  }
+
   return corrected;
 }
 
@@ -275,7 +339,7 @@ export async function validateInsight(
   // groundTruthVersion should be the verified_at timestamp of the primary fact.
   const versionSlug = options.groundTruthVersion
     ? options.groundTruthVersion.slice(0, 10)           // YYYY-MM-DD of last verification
-    : new Date().toISOString().slice(0, 7);              // fallback: month
+    : new Date().toISOString().slice(0, 10);             // fallback: today's date (daily bust)
   const cacheKey = `${entityType}:${entityId}:${versionSlug}`;
 
   // ── Check cache first ──
