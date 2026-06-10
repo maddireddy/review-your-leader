@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Landmark, ArrowRight, Vote, MapPin, Grid3x3, User, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Landmark, ArrowRight, Vote, MapPin, Grid3x3, User, X, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { DistrictInfo, getMandalsByDistrict } from '@/lib/districtData';
 import { getAssemblyByDistrict, hasRealData, getPartyColor, AssemblyConstituency } from '@/lib/constituencyData';
 import { Constituency } from '@/types';
@@ -15,6 +15,17 @@ interface DistrictPanelProps {
 }
 
 interface MandalDetail { name: string; constituency?: AssemblyConstituency }
+
+// DB mandal shape (from /api/mandals)
+interface DbMandal {
+  id: string;
+  name: string;
+  constituency_id: string | null;
+  assembly_constituencies?: {
+    id: string; name: string; current_mla: string | null;
+    mla_party: string | null; reserved: string | null; number: number;
+  } | null;
+}
 
 // Party badge component
 function PartyBadge({ party }: { party?: string }) {
@@ -29,15 +40,75 @@ function PartyBadge({ party }: { party?: string }) {
 }
 
 export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelProps) {
-  const realSeats = getAssemblyByDistrict(district.id);
-  const hasReal = hasRealData(district.id);
+  // Static data — immediate render
+  const staticSeats = getAssemblyByDistrict(district.id);
+  const hasStaticReal = hasRealData(district.id);
 
-  // Build mandal list — prefer real seat-level mandals, fallback to district-level lookup
-  const realMandalList: MandalDetail[] = hasReal
-    ? realSeats.flatMap(seat => (seat.mandals || []).map(m => ({ name: m, constituency: seat })))
+  const staticMandalList: MandalDetail[] = hasStaticReal
+    ? staticSeats.flatMap(seat => (seat.mandals || []).map(m => ({ name: m, constituency: seat })))
     : [];
-  const useRealMandals = realMandalList.length > 0;
-  const fallbackMandals = useRealMandals ? [] : getMandalsByDistrict(district.id);
+  const staticFallback = staticMandalList.length > 0 ? [] : getMandalsByDistrict(district.id);
+
+  // DB-enriched data (fetched from API)
+  const [dbMandals, setDbMandals] = useState<DbMandal[] | null>(null);
+  const [dbSeats, setDbSeats] = useState<AssemblyConstituency[] | null>(null);
+  const [dataSource, setDataSource] = useState<'static' | 'db' | 'cache'>('static');
+  const [fetching, setFetching] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchFromDb() {
+      setFetching(true);
+      try {
+        const [mandalsRes, constsRes] = await Promise.all([
+          fetch(`/api/mandals?districtId=${district.id}`),
+          fetch(`/api/constituencies?districtId=${district.id}`),
+        ]);
+        if (cancelled) return;
+        if (mandalsRes.ok) {
+          const d = await mandalsRes.json();
+          if (!cancelled && d.mandals?.length > 0) {
+            setDbMandals(d.mandals);
+            setDataSource(d.source);
+          }
+        }
+        if (constsRes.ok) {
+          const d = await constsRes.json();
+          if (!cancelled && d.constituencies?.length > 0) {
+            setDbSeats(d.constituencies);
+          }
+        }
+      } catch { /* use static */ }
+      if (!cancelled) setFetching(false);
+    }
+    fetchFromDb();
+    return () => { cancelled = true; };
+  }, [district.id]);
+
+  // Resolve which data to render
+  const seats: AssemblyConstituency[] = dbSeats ?? staticSeats;
+  const hasReal = seats.length > 0 && (dbSeats !== null ? true : hasStaticReal);
+
+  const mandalList: MandalDetail[] = dbMandals
+    ? dbMandals.map(m => ({
+        name: m.name,
+        constituency: m.assembly_constituencies
+          ? {
+              id: m.assembly_constituencies.id,
+              state_id: district.state_id,
+              district_id: district.id,
+              number: m.assembly_constituencies.number,
+              name: m.assembly_constituencies.name,
+              current_mla: m.assembly_constituencies.current_mla ?? undefined,
+              mla_party: m.assembly_constituencies.mla_party ?? undefined,
+              reserved: (m.assembly_constituencies.reserved as 'SC' | 'ST' | undefined),
+            }
+          : undefined,
+      }))
+    : staticMandalList;
+
+  const useRealMandals = mandalList.length > 0;
+  const fallbackMandals = useRealMandals ? [] : staticFallback;
 
   const [selectedMandal, setSelectedMandal] = useState<MandalDetail | null>(null);
   const [showAllAssembly, setShowAllAssembly] = useState(false);
@@ -53,7 +124,7 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
   }));
 
   const assemblyConstituencies: Constituency[] = hasReal
-    ? realSeats.map(s => ({
+    ? seats.map(s => ({
         id: s.id,
         district_id: s.district_id,
         state_id: s.state_id,
@@ -221,11 +292,13 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
               Mandals / Revenue Circles
             </span>
             <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full font-bold">
-              {useRealMandals ? realMandalList.length : fallbackMandals.length}
+              {useRealMandals ? mandalList.length : fallbackMandals.length}
             </span>
             {useRealMandals && (
               <span className="text-[10px] text-green-500/60">· tap for MLA info</span>
             )}
+            {fetching && <RefreshCw className="w-3 h-3 text-slate-500 animate-spin" />}
+            {dataSource === 'db' && <span className="text-[10px] text-indigo-400/60">· DB</span>}
           </div>
           {showMandals ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
         </button>
@@ -275,7 +348,7 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
         {showMandals && (
           <div className="grid grid-cols-2 gap-1.5">
             {useRealMandals
-              ? realMandalList.map((m, idx) => (
+              ? mandalList.map((m, idx) => (
                   <motion.button
                     key={`${m.name}-${idx}`}
                     onClick={() => setSelectedMandal(prev => prev?.name === m.name ? null : m)}
