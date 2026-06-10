@@ -184,14 +184,8 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
           {showMandals ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
         </button>
 
-        <AnimatePresence>
-          {showMandals && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
+        {showMandals && (
+            <div className="mt-2">
               {useRealMandals ? (
                 <div className="mt-2 grid grid-cols-2 gap-1.5">
                   {realMandalList.map((m, idx) => (
@@ -228,9 +222,8 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
                   ))}
                 </div>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+        )}
       </div>
 
       {/* Lok Sabha Constituencies */}

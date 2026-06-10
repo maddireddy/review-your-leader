@@ -367,7 +367,7 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
       </div>
 
       {/* News Feed (overview only) */}
-      {activeSection === 'overview' && <NewsFeed entityName={state.name} entityType="state" />}
+      {activeSection === 'overview' && <NewsFeed entityName={state.name} entityType="state" stateId={state.id} />}
 
       {/* Election History (elections tab) */}
       {activeSection === 'elections' && (
