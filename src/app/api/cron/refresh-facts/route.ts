@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { INDIA_STATES } from '@/lib/indiaData';
 import { fetchCurrentCM, validateFact } from '@/lib/liveDataFetcher';
-import { writeVerifiedFact } from '@/lib/groundTruthStore';
+import { writeVerifiedFact, invalidateFactsCache } from '@/lib/groundTruthStore';
+import { invalidateInsightCache } from '@/lib/aiValidator';
+
+// Geographic batches for staggered hourly crons
+const GEO_BATCHES: Record<string, string[]> = {
+  north:   ['JK', 'HP', 'PB', 'HR', 'UK', 'UP', 'DL', 'CH'],
+  south:   ['KA', 'TN', 'KL', 'AP', 'TG', 'PY'],
+  east:    ['WB', 'OD', 'JH', 'BR', 'SK', 'AR', 'AS', 'MN', 'ML', 'MZ', 'NL', 'TR'],
+  west:    ['MH', 'GJ', 'RJ', 'GA'],
+  central: ['MP', 'CG', 'MG'],
+  uts:     ['AN', 'DN', 'DD', 'LD', 'LA'],
+};
 
 /**
  * AUTONOMOUS FACT REFRESH PIPELINE
@@ -28,13 +39,20 @@ export async function GET(request: NextRequest) {
   const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
   const stateFilter = request.nextUrl.searchParams.get('state');
 
-  if (process.env.NODE_ENV === 'production' && !isVercelCron && !stateFilter) {
+  // Require auth in production for ALL calls, including ?state= single-state runs
+  if (process.env.NODE_ENV === 'production' && !isVercelCron) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const targets = stateFilter
-    ? INDIA_STATES.filter(s => s.id === stateFilter.toUpperCase())
-    : INDIA_STATES;
+  const batchFilter = request.nextUrl.searchParams.get('batch');
+  let targets;
+  if (stateFilter) {
+    targets = INDIA_STATES.filter(s => s.id === stateFilter.toUpperCase());
+  } else if (batchFilter && GEO_BATCHES[batchFilter]) {
+    targets = INDIA_STATES.filter(s => GEO_BATCHES[batchFilter].includes(s.id));
+  } else {
+    targets = INDIA_STATES;
+  }
 
   const results: Array<{
     state: string; old_cm: string; new_cm: string;
@@ -83,6 +101,10 @@ export async function GET(request: NextRequest) {
           sources: fact.sources,
           validation_notes: validation.notes,
         });
+        if (committed) {
+          invalidateFactsCache();
+          await invalidateInsightCache('state', state.id);
+        }
       }
 
       results.push({

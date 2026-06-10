@@ -15,6 +15,7 @@
 
 import Groq from 'groq-sdk';
 import { webSearch } from './webSearch';
+import { withRetry } from './retry';
 
 let _groq: Groq | null = null;
 function groq(): Groq {
@@ -118,7 +119,7 @@ async function extractCMFact(stateName: string, prose: string): Promise<{
   name: string; party?: string; party_short?: string; since?: string; reasoning: string;
 }> {
   try {
-    const resp = await groq().chat.completions.create({
+    const resp = await withRetry(() => groq().chat.completions.create({
       model: MODELS.validator1,
       messages: [
         {
@@ -133,7 +134,7 @@ async function extractCMFact(stateName: string, prose: string): Promise<{
       temperature: 0,
       max_tokens: 300,
       response_format: { type: 'json_object' },
-    });
+    }));
     const json = JSON.parse(resp.choices[0]?.message?.content || '{}');
     const name = (json.name || '').trim();
     // Reject obviously-bad names
@@ -169,7 +170,7 @@ export async function validateFact(
 
   for (const model of validators) {
     try {
-      const resp = await groq().chat.completions.create({
+      const resp = await withRetry(() => groq().chat.completions.create({
         model,
         messages: [
           {
@@ -184,7 +185,7 @@ export async function validateFact(
         temperature: 0,
         max_tokens: 80,
         response_format: { type: 'json_object' },
-      });
+      }));
       const json = JSON.parse(resp.choices[0]?.message?.content || '{}');
       verdicts.push({
         yes: json.answer === 'yes',
@@ -226,7 +227,7 @@ export async function fetchStateEnrichment(stateName: string): Promise<StateEnri
   if (!search.ok || search.snippets.length === 0) return empty;
 
   try {
-    const resp = await groq().chat.completions.create({
+    const resp = await withRetry(() => groq().chat.completions.create({
       model: MODELS.validator1,
       messages: [
         {
@@ -241,7 +242,7 @@ export async function fetchStateEnrichment(stateName: string): Promise<StateEnri
       temperature: 0.1,
       max_tokens: 600,
       response_format: { type: 'json_object' },
-    });
+    }));
     const json = JSON.parse(resp.choices[0]?.message?.content || '{}');
     const arr = (x: unknown): string[] => Array.isArray(x) ? x.filter(s => typeof s === 'string').slice(0, 4) : [];
     return {

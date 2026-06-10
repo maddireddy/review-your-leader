@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowRight, Building2, Sparkles, Loader2, ChevronDown, ChevronUp, Globe, RefreshCw, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { MapPin, ArrowRight, Building2, Sparkles, Loader2, ChevronDown, ChevronUp, Globe, RefreshCw, ShieldCheck, AlertTriangle, User } from 'lucide-react';
 import { StateInfo } from '@/lib/indiaData';
 import { getDistrictsByState, DistrictInfo } from '@/lib/districtData';
 import { formatNumber } from '@/lib/utils';
 import { getPartyTheme, VALIDATION_COLORS } from '@/lib/colorSystem';
 import { NewsFeed } from '@/components/Civic/NewsFeed';
+import { PoliticianJourney } from '@/components/Profile/PoliticianJourney';
 
 interface StatePanelProps {
   state: StateInfo;
@@ -30,6 +31,7 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
     sources?: string[]; verifiedAt?: string;
   } | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [showJourney, setShowJourney] = useState(false);
 
   const theme = getPartyTheme(state.ruling_party);
   const cmName = liveCM?.name || state.chief_minister;
@@ -226,8 +228,28 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
               </span>
               <span className="text-xs text-slate-500 truncate">{cmParty}</span>
             </div>
+            <button
+              onClick={() => setShowJourney(true)}
+              className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-violet-500/15 text-violet-300 border border-violet-500/25 hover:bg-violet-500/25 transition-all"
+            >
+              <User className="w-3 h-3" />
+              View Full Profile
+              <ArrowRight className="w-2.5 h-2.5" />
+            </button>
           </div>
         </div>
+
+        {/* ── Politician Journey Modal ─── */}
+        {showJourney && (
+          <PoliticianJourney
+            name={cmName}
+            stateId={state.id}
+            role="Chief Minister"
+            party={cmParty || state.ruling_party}
+            partyColor={theme.text}
+            onClose={() => setShowJourney(false)}
+          />
+        )}
 
         {/* Live verification provenance */}
         {liveCM?.isLive && (

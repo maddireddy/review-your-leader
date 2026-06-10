@@ -27,20 +27,15 @@ export interface VerifiedFact {
   verified_at: string;
 }
 
-// In-memory cache of the whole verified-facts table (refreshed every 5 min)
-let _factsCache: { facts: Map<string, VerifiedFact>; ts: number } | null = null;
-const CACHE_TTL = 5 * 60 * 1000;
-
 function cacheKey(entityType: string, entityId: string, factKey: string) {
   return `${entityType}:${entityId}:${factKey}`;
 }
 
-// ─── Load all verified facts (cached) ───────────────────────────
+// Fetch directly from Supabase — no in-memory singleton.
+// Each serverless invocation does one DB read; Supabase PgBouncer handles pooling.
+// Route-level Next.js cache (revalidate: 300) absorbs repeated reads within the same
+// deployment instance without the eviction bug of a module-level Map.
 async function loadFacts(): Promise<Map<string, VerifiedFact>> {
-  if (_factsCache && Date.now() - _factsCache.ts < CACHE_TTL) {
-    return _factsCache.facts;
-  }
-
   const facts = new Map<string, VerifiedFact>();
   try {
     const supabase = getSupabaseAdmin();
@@ -56,14 +51,11 @@ async function loadFacts(): Promise<Map<string, VerifiedFact>> {
   } catch {
     // Supabase not configured — fall through to static data
   }
-
-  _factsCache = { facts, ts: Date.now() };
   return facts;
 }
 
-export function invalidateFactsCache() {
-  _factsCache = null;
-}
+// No-op kept for call-site compatibility — invalidation happens at DB level now.
+export function invalidateFactsCache() { /* no-op — reads go direct to Supabase */ }
 
 // ─── Read a single verified fact ────────────────────────────────
 export async function getVerifiedFact(

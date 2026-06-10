@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { MapPin, Menu, X, BarChart3 } from 'lucide-react';
+import { MapPin, Menu, X, BarChart3, BookOpen } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 export function Navbar() {
@@ -36,6 +36,10 @@ export function Navbar() {
             <Link href="/dashboard/parties" className="text-sm text-slate-300 hover:text-white transition-colors flex items-center gap-1">
               <BarChart3 className="w-3.5 h-3.5" /> Dashboard
             </Link>
+            <Link href="/epics" className="text-sm text-slate-300 hover:text-white transition-colors flex items-center gap-1">
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-amber-300">Sacred Epics</span>
+            </Link>
             <Link href="/about" className="text-sm text-slate-300 hover:text-white transition-colors">
               About
             </Link>
@@ -63,6 +67,9 @@ export function Navbar() {
             </Link>
             <Link href="/dashboard/parties" className="block text-sm text-slate-300 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
               Dashboard
+            </Link>
+            <Link href="/epics" className="block text-sm text-amber-300 hover:text-amber-200 py-2" onClick={() => setMenuOpen(false)}>
+              Sacred Epics (Ramayana & Mahabharata)
             </Link>
             <Link href="/about" className="block text-sm text-slate-300 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
               About

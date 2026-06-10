@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInsight } from '@/lib/aiValidator';
 import { getStateById } from '@/lib/indiaData';
+import { getLiveStateInfo } from '@/lib/groundTruthStore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,11 +12,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'State not found' }, { status: 404 });
     }
 
+    // Use live verified facts when available so AI reflects the latest CM
+    const live = await getLiveStateInfo(stateId);
+    const cmName = live?.chief_minister || state.chief_minister;
+    const cmParty = live?.cm_party || state.cm_party;
+
     // ── Ground truth — injected into ALL model prompts ──────────
-    // This prevents hallucination of stale facts like old CMs
     const groundTruth = {
-      chief_minister: state.chief_minister,
-      cm_party: state.cm_party,
+      chief_minister: cmName,
+      cm_party: cmParty,
       ruling_party: state.ruling_party,
       capital: state.capital,
       state_name: state.name,
@@ -23,8 +28,8 @@ export async function POST(request: NextRequest) {
     };
 
     // ── User prompt ──────────────────────────────────────────────
-    const userPrompt = `Provide a factual 3-sentence governance briefing on ${state.chief_minister},
-Chief Minister of ${state.name} (${state.cm_party}):
+    const userPrompt = `Provide a factual 3-sentence governance briefing on ${cmName},
+Chief Minister of ${state.name} (${cmParty}):
 1. What major policy or development initiative has been launched recently?
 2. What is a notable achievement or challenge in infrastructure/economy/welfare?
 3. What is one key ongoing project or campaign in the state?
@@ -32,12 +37,13 @@ Chief Minister of ${state.name} (${state.cm_party}):
 Stay grounded in verified facts. Be specific, neutral, and informative.`;
 
     // ── Run 3-level validation pipeline ─────────────────────────
+    // Pass verified_at as groundTruthVersion so the cache busts whenever CM changes
     const result = await validateInsight(
       'state',
       stateId,
       userPrompt,
       groundTruth,
-      { forceRefresh: forceRefresh === true }
+      { forceRefresh: forceRefresh === true, groundTruthVersion: live?.cm_verified_at }
     );
 
     return NextResponse.json({

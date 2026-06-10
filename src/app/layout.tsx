@@ -7,6 +7,7 @@ import { ServiceWorker } from '@/components/Layout/ServiceWorker';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
 import { NationalAnthem } from '@/components/Patriotic/NationalAnthem';
 import { FlagBackground } from '@/components/Patriotic/FlagBackground';
+import { LiveTicker } from '@/components/Layout/LiveTicker';
 import type { Viewport } from 'next';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PostHogProvider>
             <FlagBackground />
             <Navbar />
+            <LiveTicker />
             {children}
             <NationalAnthem />
             <ServiceWorker />

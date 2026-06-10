@@ -26,10 +26,40 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
 }
 
+// ── HMAC-SHA256 signature verification ─────────────────────────
+async function verifyWebhookSignature(request: NextRequest, rawBody: string): Promise<boolean> {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  if (!appSecret) return true; // Skip if not configured (dev)
+
+  const signature = request.headers.get('x-hub-signature-256');
+  if (!signature?.startsWith('sha256=')) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(appSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signed = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+  const expected = 'sha256=' + Array.from(new Uint8Array(signed))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return expected === signature;
+}
+
 // ── Incoming message handler ────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const rawBody = await request.text();
+
+    if (!(await verifyWebhookSignature(request, rawBody))) {
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
 
     const entry = body.entry?.[0]?.changes?.[0]?.value;
     const message = entry?.messages?.[0];

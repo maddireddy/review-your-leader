@@ -11,6 +11,7 @@
  */
 
 import { getSupabaseAdmin } from './supabaseAdmin';
+import { withRetry } from './retry';
 
 export interface GroundTruth {
   [key: string]: string;
@@ -86,7 +87,7 @@ async function callModel(
 ): Promise<string> {
   try {
     const client = await groqClient();
-    const res = await client.chat.completions.create({
+    const res = await withRetry(() => client.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -94,7 +95,7 @@ async function callModel(
       ],
       temperature: model === MODELS.arbiter ? 0.2 : 0.35,
       max_tokens: maxTokens,
-    });
+    }));
     return res.choices[0]?.message?.content?.trim() || '';
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -155,17 +156,52 @@ function autoCorrect(response: string, violations: FactViolation[], groundTruth:
 }
 
 // ─── Cache helpers ────────────────────────────────────────────
-async function getCachedInsight(cacheKey: string): Promise<ValidationResult | null> {
+async function getCachedInsight(
+  cacheKey: string,
+  groundTruth: GroundTruth
+): Promise<ValidationResult | null> {
   try {
     const supabase = getSupabaseAdmin();
+
+    // Also scan for any older cache entries for this entity (any key prefix)
+    // and bust them if the CM name in the cached response contradicts the live CM.
+    const entityParts = cacheKey.split(':');
+    const entityType = entityParts[0];
+    const entityId = entityParts[1];
+
     const { data } = await supabase
       .from('ai_insight_cache')
       .select('*')
-      .eq('cache_key', cacheKey)
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
       .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (!data) return null;
+
+    // Stale-content guard: if the cached response mentions a different CM than
+    // the current ground truth, bust this entry immediately.
+    const currentCM = groundTruth.chief_minister?.toLowerCase() ?? '';
+    const cachedText = (data.consensus_response ?? '').toLowerCase();
+    if (currentCM && cachedText.length > 0) {
+      const cmFirstName = currentCM.split(/\s+/)[0];
+      const cmLastName = currentCM.split(/\s+/).pop() ?? '';
+      const containsCM = cachedText.includes(cmFirstName) || cachedText.includes(cmLastName);
+      if (!containsCM) {
+        // Cached insight doesn't mention the live CM — bust it
+        await supabase.from('ai_insight_cache').delete().eq('id', data.id);
+        return null;
+      }
+    }
+
+    // Also verify exact cache key match (new key format includes verified_at date)
+    if (data.cache_key !== cacheKey) {
+      // Different version slot — delete the stale one, return null to regenerate
+      await supabase.from('ai_insight_cache').delete().eq('id', data.id);
+      return null;
+    }
 
     const ageMs = Date.now() - new Date(data.created_at).getTime();
     return {
@@ -218,19 +254,33 @@ async function storeCachedInsight(
 }
 
 // ─── Main 3-level validation pipeline ────────────────────────
+export async function invalidateInsightCache(entityType: string, entityId: string): Promise<void> {
+  try {
+    const supabase = getSupabaseAdmin();
+    await supabase
+      .from('ai_insight_cache')
+      .delete()
+      .like('cache_key', `${entityType}:${entityId}:%`);
+  } catch { /* best effort */ }
+}
+
 export async function validateInsight(
   entityType: string,
   entityId: string,
   userPrompt: string,
   groundTruth: GroundTruth,
-  options: { cacheTtlHours?: number; forceRefresh?: boolean } = {}
+  options: { cacheTtlHours?: number; forceRefresh?: boolean; groundTruthVersion?: string } = {}
 ): Promise<ValidationResult> {
-  const monthKey = new Date().toISOString().slice(0, 7); // e.g. "2026-06"
-  const cacheKey = `${entityType}:${entityId}:${monthKey}`;
+  // Cache key includes a ground-truth version hash so a CM change immediately busts the cache.
+  // groundTruthVersion should be the verified_at timestamp of the primary fact.
+  const versionSlug = options.groundTruthVersion
+    ? options.groundTruthVersion.slice(0, 10)           // YYYY-MM-DD of last verification
+    : new Date().toISOString().slice(0, 7);              // fallback: month
+  const cacheKey = `${entityType}:${entityId}:${versionSlug}`;
 
   // ── Check cache first ──
   if (!options.forceRefresh) {
-    const cached = await getCachedInsight(cacheKey);
+    const cached = await getCachedInsight(cacheKey, groundTruth);
     if (cached) return cached;
   }
 
