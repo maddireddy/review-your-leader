@@ -200,7 +200,11 @@ export default function HomePage() {
               </motion.div>
             )}
 
-            <IndiaMap onStateSelect={handleStateSelect} selectedState={view.selectedState} />
+            <IndiaMap
+              onStateSelect={handleStateSelect}
+              onDistrictSelect={(d) => handleDistrictSelect(d as unknown as DistrictInfo)}
+              selectedState={view.selectedState}
+            />
           </motion.div>
 
           {/* CENTER — Election calendar (country view only, desktop) */}
