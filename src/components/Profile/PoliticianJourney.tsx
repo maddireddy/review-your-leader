@@ -20,6 +20,7 @@ interface PoliticianProfile {
   party: string;
   state_id: string;
   photo_url?: string;
+  enhanced_photo_url?: string;
   wikipedia_extract?: string;
   wikipedia_url?: string;
   birth_date?: string;
@@ -185,17 +186,33 @@ export function PoliticianJourney({ name, stateId, role = 'Chief Minister', part
                   <div className="flex gap-4 items-start relative">
                     {/* Photo or initials */}
                     <div className="shrink-0 relative">
-                      {profile.photo_url && !imgError ? (
-                        <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 shadow-xl"
-                          style={{ borderColor: partyColor, outline: `2px solid ${partyColor}40`, outlineOffset: '2px' }}>
+                      {(profile.enhanced_photo_url || profile.photo_url) && !imgError ? (
+                        <div
+                          className="w-20 h-20 rounded-2xl overflow-hidden shadow-2xl relative"
+                          style={{
+                            borderWidth: 2,
+                            borderStyle: 'solid',
+                            borderColor: partyColor,
+                            outline: `3px solid ${partyColor}30`,
+                            outlineOffset: '3px',
+                            boxShadow: `0 8px 32px ${partyColor}30, 0 2px 8px rgba(0,0,0,0.6)`,
+                          }}
+                        >
                           <Image
-                            src={profile.photo_url}
+                            src={profile.enhanced_photo_url || profile.photo_url!}
                             alt={profile.name}
                             width={80}
                             height={80}
-                            className="object-cover w-full h-full"
+                            className="object-cover object-top w-full h-full"
+                            style={{
+                              // Professional CSS enhancement: slight contrast boost, natural saturation
+                              filter: 'contrast(1.06) brightness(1.03) saturate(1.12)',
+                            }}
                             onError={() => setImgError(true)}
+                            unoptimized
                           />
+                          {/* Subtle bottom gradient for depth */}
+                          <div className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
                         </div>
                       ) : (
                         <div
@@ -203,6 +220,12 @@ export function PoliticianJourney({ name, stateId, role = 'Chief Minister', part
                           style={{ background: partyColor + '22', borderColor: partyColor, color: partyColor }}
                         >
                           {initials}
+                        </div>
+                      )}
+                      {/* Enhanced badge — shows when AI-enhanced photo is used */}
+                      {profile.enhanced_photo_url && (
+                        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-violet-500 border-2 border-slate-950 flex items-center justify-center" title="AI-enhanced photo">
+                          <Sparkles className="w-2.5 h-2.5 text-white" />
                         </div>
                       )}
                       {/* Verified badge */}

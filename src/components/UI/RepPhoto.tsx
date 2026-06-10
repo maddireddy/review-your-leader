@@ -80,16 +80,17 @@ export function RepPhoto({
         />
       )}
 
-      {/* Real Wikipedia photo */}
+      {/* Enhanced politician photo */}
       {showPhoto && (
         <Image
           src={photoUrl}
           alt={name}
           fill
           className="object-cover object-top"
+          style={{ filter: 'contrast(1.06) brightness(1.03) saturate(1.1)' }}
           onError={() => setFailed(true)}
           sizes={`${size}px`}
-          unoptimized // Wikipedia CDN already serves optimised sizes
+          unoptimized
         />
       )}
 

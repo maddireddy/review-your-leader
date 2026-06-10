@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { webSearch } from '@/lib/webSearch';
 import { withRetry } from '@/lib/retry';
 import Anthropic from '@anthropic-ai/sdk';
+import { resolvePoliticianPhoto } from '@/lib/politicianPhoto';
 
 /**
  * GET /api/politician?name=C.+Joseph+Vijay&stateId=TN&role=Chief+Minister
@@ -176,6 +177,9 @@ export async function GET(request: NextRequest) {
   // ── Fetch Wikipedia ─────────────────────────────────────────
   const wiki = await fetchWikipedia(name);
 
+  // ── Resolve best photo (multi-source + Claude vision + CDN enhance) ──────
+  const photoResult = await resolvePoliticianPhoto(name, wiki?.wikiSlug);
+
   // ── Fetch recent news via Tavily ────────────────────────────
   const searchResult = await webSearch(
     `${name} ${role} ${stateId} India ${new Date().getFullYear()} latest news achievements`
@@ -204,7 +208,8 @@ export async function GET(request: NextRequest) {
     role,
     party,
     party_short: null,
-    photo_url: wiki?.photo || null,
+    photo_url: photoResult?.original || wiki?.photo || null,
+    enhanced_photo_url: photoResult?.enhanced || null,
     wikipedia_slug: wiki?.wikiSlug || null,
     wikipedia_extract: wiki?.extract || null,
     wikipedia_url: wiki?.url || null,
