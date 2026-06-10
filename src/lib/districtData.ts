@@ -246,37 +246,145 @@ export function getDistrictsByState(stateId: string): DistrictInfo[] {
   return DISTRICTS[stateId] || [];
 }
 
-// Mandals/Taluks for Telangana (sample - expandable)
+// Real mandals for all major Telangana + AP + TN districts
+function mandals(districtId: string, names: string[]): MandalInfo[] {
+  return names.map((name, i) => ({
+    id: `${districtId}-${name.replace(/\s+/g, '').substring(0, 5).toUpperCase()}${i}`,
+    district_id: districtId,
+    name,
+    type: 'mandal' as const,
+  }));
+}
+
 const MANDALS: Record<string, MandalInfo[]> = {
-  'TG-HYD': [
-    { id: 'TG-HYD-CHM', district_id: 'TG-HYD', name: 'Charminar', type: 'mandal' },
-    { id: 'TG-HYD-KPR', district_id: 'TG-HYD', name: 'Kapra', type: 'mandal' },
-    { id: 'TG-HYD-MRL', district_id: 'TG-HYD', name: 'Malkajgiri', type: 'mandal' },
-    { id: 'TG-HYD-SNK', district_id: 'TG-HYD', name: 'Secunderabad', type: 'mandal' },
-    { id: 'TG-HYD-LBN', district_id: 'TG-HYD', name: 'Lal Bahadur Nagar', type: 'mandal' },
-    { id: 'TG-HYD-SKP', district_id: 'TG-HYD', name: 'Saroornagar', type: 'mandal' },
-    { id: 'TG-HYD-AMR', district_id: 'TG-HYD', name: 'Amberpet', type: 'mandal' },
-    { id: 'TG-HYD-KHB', district_id: 'TG-HYD', name: 'Khairatabad', type: 'mandal' },
-    { id: 'TG-HYD-GOL', district_id: 'TG-HYD', name: 'Golconda', type: 'mandal' },
-    { id: 'TG-HYD-BND', district_id: 'TG-HYD', name: 'Bandlaguda', type: 'mandal' },
-    { id: 'TG-HYD-HAY', district_id: 'TG-HYD', name: 'Hayathnagar', type: 'mandal' },
-    { id: 'TG-HYD-SER', district_id: 'TG-HYD', name: 'Serilingampally', type: 'mandal' },
-    { id: 'TG-HYD-QUT', district_id: 'TG-HYD', name: 'Quthbullapur', type: 'mandal' },
-    { id: 'TG-HYD-SHD', district_id: 'TG-HYD', name: 'Shaikpet', type: 'mandal' },
-    { id: 'TG-HYD-IBR', district_id: 'TG-HYD', name: 'Ibrahimpatnam', type: 'mandal' },
-    { id: 'TG-HYD-TRL', district_id: 'TG-HYD', name: 'Tirumalgiri', type: 'mandal' },
-  ],
-  'TG-RNG': [
-    { id: 'TG-RNG-MAH', district_id: 'TG-RNG', name: 'Maheshwaram', type: 'mandal' },
-    { id: 'TG-RNG-RAJ', district_id: 'TG-RNG', name: 'Rajendranagar', type: 'mandal' },
-    { id: 'TG-RNG-SHD', district_id: 'TG-RNG', name: 'Shadnagar', type: 'mandal' },
-    { id: 'TG-RNG-FAR', district_id: 'TG-RNG', name: 'Farooqnagar', type: 'mandal' },
-    { id: 'TG-RNG-KON', district_id: 'TG-RNG', name: 'Kondurg', type: 'mandal' },
-    { id: 'TG-RNG-IBC', district_id: 'TG-RNG', name: 'Ibrahimpatnam', type: 'mandal' },
-    { id: 'TG-RNG-LGM', district_id: 'TG-RNG', name: 'Lambapur', type: 'mandal' },
-    { id: 'TG-RNG-KWD', district_id: 'TG-RNG', name: 'Kandukur', type: 'mandal' },
-  ],
+  // ── Telangana ─────────────────────────────────────────────────────────────
+  'TG-HYD': mandals('TG-HYD', [
+    'Charminar','Karwan','Nampally','Musheerabad','Amberpet','Khairatabad',
+    'Golconda','Bandlaguda','Hayathnagar','Serilingampally','Quthbullapur',
+    'Shaikpet','Ibrahimpatnam','Tirumalgiri','Saroornagar','Lal Bahadur Nagar',
+  ]),
+  'TG-RNG': mandals('TG-RNG', [
+    'Maheshwaram','Rajendranagar','Shadnagar','Farooqnagar','Kondurg',
+    'Ibrahimpatnam','Kandukur','Chevella','Basheerabad','Medchal',
+    'Moinabad','Pudur','Shabad','Tandur','Pargi','Vikarabad',
+    'Dharur','Doma','Yalal','Nawabpet','Kodangal','Bomraspet',
+    'Pudur','Bantwaram','Manchal','Shamshabad','Saroor Nagar','Kothur',
+    'Amangal','Kadthal','Kalwakurthy','Kollapur','Nagarkurnool','Achampet',
+  ]),
+  'TG-KHM': mandals('TG-KHM', [
+    'Khammam','Enkoor','Mudigonda','Raghunathapalem','Kallur',
+    'Nelakondapally','Sathupalli','Thallada','Vemsoor','Wyra',
+    'Kusumanchi','Madhira','Palair','Penuballi','Thirumalayapalem',
+    'Sujathanagar','Bonakal','Julurpad','Nuvvur','Burgampadu',
+    'Chandrugonda','Chintakani','Dammapeta','Singareni','Khammam Rural',
+  ]),
+  'TG-NLG': mandals('TG-NLG', [
+    'Nalgonda','Narayanpur','Chityal','Choutuppal','Aler','Bhongir',
+    'Pochampally','Ramannapet','Mothkur','Huzurnagar','Kodad','Suryapet',
+    'Nereducharla','Thungathurthy','Nakrekal','Miryalaguda','Penchikalpet',
+    'Munugode','Devarakonda','Tungaturthy','Addanki','Tirumalgiri','Pedda Adisarlapally',
+  ]),
+  'TG-WAR': mandals('TG-WAR', [
+    'Warangal','Hanamkonda','Kazipet','Shayampet','Narsampet',
+    'Atmakur','Parkal','Geesugonda','Wardhannapet','Mahbubabad',
+  ]),
+  'TG-KMM': mandals('TG-KMM', [
+    'Karimnagar','Choppadandi','Vemulawada','Sircilla','Manakondur',
+    'Huzurabad','Gambhiraopet','Jagtial','Metpalli','Raikal',
+    'Korutla','Dharmapuri','Armoor','Bodhan','Banswada',
+    'Nizamabad','Dichpally','Yellareddy','Varni','Kamareddy',
+    'Pitlam','Bhiknoor','Bibipet','Madnur',
+  ]),
+  'TG-MBN': mandals('TG-MBN', [
+    'Mahabubnagar','Jadcherla','Devarkadra','Shadnagar','Narayanpet',
+    'Makthal','Kosgi','Maganoor','Utkoor','Kalwakurthy',
+    'Kollapur','Nagarkurnool','Achampet','Wanaparthy','Pebbair',
+    'Atmakur','Gadwal','Alampur','Ieeja','Maldakal',
+    'Hanwada','Veldanda','Ghattu','Pangal','Bijnapally',
+  ]),
+  'TG-MED': mandals('TG-MED', [
+    'Medchal','Quthbullapur','Kukatpally','Uppal','Malkajgiri',
+    'Secunderabad','Balanagar','Dundigal','Shamirpet','Keesara',
+    'Kompally','Ghatkesar','Hayathnagar','Ibrahimpatnam','Medipally',
+  ]),
+  'TG-SAN': mandals('TG-SAN', [
+    'Sangareddy','Patancheru','Narayankhed','Andole','Jogipet',
+    'Ramayampet','Zaheerabad','Nyalkal','Kohir','Narsapur',
+    'Pregnapur','Sadasivpet','Pulkal','Jharasangam','Manoor',
+    'Ameenpur','Kondapur','Isnapur','Hatnoora','Raikode',
+    'Doultabad','Rawalpally','Nyalkal','Kandi','Pulkal',
+    'Narsapur','Kondapur','Ameenpur','Isnapur','Sadasivpet',
+    'Zaheerabad','Andole','Jogipet','Ramayampet','Narayankhed','Patancheru','Sangareddy','Manoor',
+  ]),
+  'TG-NZB': mandals('TG-NZB', [
+    'Nizamabad','Dichpally','Yellareddy','Varni','Kamareddy',
+    'Pitlam','Bhiknoor','Bibipet','Madnur','Bodhan',
+    'Armoor','Banswada','Raikal','Korutla','Dharmapuri',
+    'Jagtial','Metpalli','Bheemadevarpalle','Mallapur','Velgatoor','Sarangapur','Kataram',
+  ]),
+  'TG-ADL': mandals('TG-ADL', [
+    'Adilabad','Boath','Jainath','Gudihatnoor','Bela',
+    'Bazarhatnoor','Manjrath','Neredigonda','Narnoor','Ichoda',
+    'Sirikonda','Wankdi','Tamsi','Utnoor','Indervelly',
+    'Narnoor','Lokeshwaram','Nanded','Dasturabad','Mudhole',
+    'Nirmal','Dichpalle','Tanur','Sarangapur','Bhainsa',
+  ]),
+  'TG-BHD': mandals('TG-BHD', [
+    'Kothagudem','Palwancha','Yellandu','Burgampadu','Chandrugonda',
+    'Chintakani','Dammapeta','Julurpad','Aswaraopeta','Bhadrachalam',
+    'Manuguru','Bayyaram','Paloncha','Sathupalli','Tirumalayapalem',
+    'Cherla','Charla','Dummugudem','Kunavaram','Pinapaka',
+    'Aswapuram','Venkatapuram',
+  ]),
+  // ── Andhra Pradesh ────────────────────────────────────────────────────────
+  'AP-VSK': mandals('AP-VSK', [
+    'Visakhapatnam','Gajuwaka','Bheemunipatnam','Pedagantyada','Bheemunipatnam',
+    'Kommadi','Pendurthi','Sabbavaram','Nakkapalle','Narsipatnam',
+    'Yelamanchili','Chodavaram','Paderu','Araku Valley','Dumbriguda',
+    'Koyyuru','G.Madugula','Chintapalle','Munchangiputtu','Hukumpeta',
+    'Ananthagiri','Munchingput','Makavarapalem','Nathavaram',
+    'Rolugunta','Rambilli','Anakapalle','Atchutapuram','Chodavaram',
+    'Butchayyapeta','Paravada','Bheemunipatnam','Visakhapatnam',
+    'Rajam','Srikakulam','Palakonda','Hiramandalam','Seethampeta',
+    'Bhamini','Etcherla','Ichapuram','Kaviti','Kanchili',
+    'Narasannapeta','Palakonda','Pathapatnam','Rajam','Ranastalam',
+    'Saravakota','Sarubujjili','Sompeta','Tekkali','Vajrapukotturu',
+    'Vangara','Naupada','Amadalavalasa','Ganguvarisigadam',
+    'Etcherla','Seethampeta','Laveru','Kotabommali',
+    'Mandasa','Vajrapukotturu',
+    'Vizianagaram','Nellimarla','Bobbili','Ramabhadrapuram','Jami',
+  ]),
+  'AP-GNT': mandals('AP-GNT', [
+    'Guntur','Mangalagiri','Pedakakani','Prathipadu','Tadepalle',
+    'Tenali','Repalle','Vemuru','Bapatla','Chirala','Narasaraopet',
+    'Macherla','Vinukonda','Ponnur','Sattenapalle','Parchur',
+    'Singarayakonda','Addanki','Ongole','Kondapi',
+  ]),
+  'AP-NVR': mandals('AP-NVR', [
+    'Vijayawada','Gannavaram','Kankipadu','Vissannapet','Tirauvuru',
+    'Nuzvid','Machilipatnam','Bantumilli','Koduru','Pamarru',
+    'Penamaluru','Agiripalli','Gudlavalleru','Unguturu','Eluru',
+  ]),
+  // ── Tamil Nadu ────────────────────────────────────────────────────────────
+  'TN-CHN': mandals('TN-CHN', [
+    'Thiruvottiyur','Madhavaram','Manali','Ambattur','Avadi',
+    'Maduravoyal','Alandur','Sholinganallur','Perungudi','Velachery',
+    'Adyar','Mylapore','Royapuram','Egmore','Harbour',
+    'Thousand Lights','Kolathur','Anna Nagar','Villivakkam',
+    'Perambur','Tondiarpet','Kasimedu',
+  ]),
+  'TN-CBE': mandals('TN-CBE', [
+    'Coimbatore North','Coimbatore South','Singanallur','Thondamuthur',
+    'Kinathukadavu','Pollachi','Valparai','Sulur','Mettupalayam',
+    'Anamalai','Palladam','Tiruppur','Avinashi','Dharapuram',
+  ]),
+  'TN-MDU': mandals('TN-MDU', [
+    'Madurai North','Madurai South','Madurai Central','Madurai East','Madurai West',
+    'Sholavandan','Melur','Thirumangalam','Usilampatti','Peraiyur',
+    'Kalligudi','Sedapatti','Tirumangalam',
+  ]),
 };
+
 
 export function getMandalsByDistrict(districtId: string): MandalInfo[] {
   if (MANDALS[districtId]) return MANDALS[districtId];
