@@ -36,6 +36,26 @@
     {
       "path": "/api/cron/refresh-cache",
       "schedule": "30 20 * * *"
+    },
+    {
+      "path": "/api/cron/sync-electoral",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-electoral?state=TN",
+      "schedule": "0 3 * * 1"
+    },
+    {
+      "path": "/api/cron/sync-electoral?state=MH",
+      "schedule": "0 3 * * 2"
+    },
+    {
+      "path": "/api/cron/sync-electoral?state=UP",
+      "schedule": "0 3 * * 3"
+    },
+    {
+      "path": "/api/cron/sync-electoral?state=WB",
+      "schedule": "0 3 * * 4"
     }
   ],
   "env": {

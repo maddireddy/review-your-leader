@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowRight, Building2, Sparkles, Loader2, ChevronDown, ChevronUp, Globe, RefreshCw, ShieldCheck, AlertTriangle, User } from 'lucide-react';
+import { MapPin, ArrowRight, Building2, Sparkles, Loader2, ChevronDown, ChevronUp, Globe, RefreshCw, ShieldCheck, AlertTriangle, User, BarChart2 } from 'lucide-react';
 import { StateInfo } from '@/lib/indiaData';
 import { getDistrictsByState, DistrictInfo } from '@/lib/districtData';
 import { formatNumber } from '@/lib/utils';
 import { getPartyTheme, VALIDATION_COLORS } from '@/lib/colorSystem';
 import { NewsFeed } from '@/components/Civic/NewsFeed';
 import { PoliticianJourney } from '@/components/Profile/PoliticianJourney';
+import { ElectionHistory } from '@/components/Electoral/ElectionHistory';
 
 interface StatePanelProps {
   state: StateInfo;
@@ -32,6 +33,7 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
   } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [showJourney, setShowJourney] = useState(false);
+  const [activeSection, setActiveSection] = useState<'overview' | 'elections'>('overview');
 
   const theme = getPartyTheme(state.ruling_party);
   const cmName = liveCM?.name || state.chief_minister;
@@ -349,8 +351,28 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
         </AnimatePresence>
       </motion.div>
 
-      {/* News Feed */}
-      <NewsFeed entityName={state.name} entityType="state" />
+      {/* ── Section toggle ──────────────────────────────────── */}
+      <div className="flex gap-1 p-1 bg-slate-900/60 rounded-xl border border-slate-800/40">
+        {([
+          { id: 'overview',   icon: Globe,     label: 'Overview' },
+          { id: 'elections',  icon: BarChart2,  label: 'Elections' },
+        ] as const).map(t => (
+          <button key={t.id} onClick={() => setActiveSection(t.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              activeSection === t.id ? 'bg-violet-500/20 text-violet-300 border border-violet-500/25' : 'text-slate-500 hover:text-slate-300'
+            }`}>
+            <t.icon className="w-3 h-3" />{t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* News Feed (overview only) */}
+      {activeSection === 'overview' && <NewsFeed entityName={state.name} entityType="state" />}
+
+      {/* Election History (elections tab) */}
+      {activeSection === 'elections' && (
+        <ElectionHistory stateId={state.id} stateName={state.name} />
+      )}
 
       {/* Districts List */}
       <div>

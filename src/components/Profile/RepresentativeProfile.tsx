@@ -15,6 +15,7 @@ import { AIInsightPanel } from './AIInsightPanel';
 import { TenureTimeline } from './TenureTimeline';
 import { RepPhoto } from '@/components/UI/RepPhoto';
 import { PoliticianJourney } from './PoliticianJourney';
+import { ElectionHistory } from '@/components/Electoral/ElectionHistory';
 import { CitizenRating } from '@/components/Civic/CitizenRating';
 import { IssueTracker } from '@/components/Civic/IssueTracker';
 import { NewsFeed } from '@/components/Civic/NewsFeed';
@@ -412,14 +413,21 @@ export function RepresentativeProfile({ constituency }: RepresentativeProfilePro
           </motion.div>
         )}
 
-        {/* ELECTION RESULTS */}
+        {/* ELECTION RESULTS — full electoral history */}
         {tab === 'election' && (
           <motion.div key="election" className="space-y-3"
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
 
+            <ElectionHistory
+              stateId={rep.state_id}
+              stateName={rep.state_name}
+              constituencyId={rep.constituency_id}
+              defaultTab="results"
+            />
+
             {latestElection ? (
               <>
-                {/* Win margin hero */}
+                {/* Win margin hero — personal stats from static data */}
                 <div className="glass-card p-4 overflow-hidden relative">
                   <div className="absolute top-0 left-0 right-0 h-1" style={{ background: theme.gradient }} />
                   <div className="text-xs text-slate-500 mb-1 mt-1">2024 General Election · {constituency.name}</div>
