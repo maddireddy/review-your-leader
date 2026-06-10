@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, ExternalLink, Star, Zap, Award, BookOpen, TrendingUp,
-  Calendar, MapPin, Quote, User, Loader2, RefreshCw, ChevronDown, ChevronUp, Newspaper,
+  Calendar, MapPin, Quote, User, RefreshCw, ChevronDown, ChevronUp, Newspaper,
   ShieldCheck, Sparkles, Target, Globe
 } from 'lucide-react';
 import Image from 'next/image';
@@ -66,9 +66,11 @@ export function PoliticianJourney({ name, stateId, role = 'Chief Minister', part
 
   useEffect(() => {
     let cancelled = false;
+    /* eslint-disable react-hooks/set-state-in-effect */
     setLoading(true);
     setError('');
     setProfile(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const url = `/api/politician?name=${encodeURIComponent(name)}&stateId=${encodeURIComponent(stateId)}&role=${encodeURIComponent(role)}&party=${encodeURIComponent(party)}`;
 

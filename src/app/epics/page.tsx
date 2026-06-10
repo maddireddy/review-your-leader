@@ -103,15 +103,12 @@ export default function EpicsPage() {
     if (!selectedEpic) return;
     let cancelled = false;
 
-    // Reset state synchronously before async fetch — valid pattern for sequential effect setup
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    /* eslint-disable react-hooks/set-state-in-effect */
     setEpisodes([]);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentEpisode(null);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setExpandedBook(1);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingEpisodes(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     fetch(`/api/epics/episodes?epicId=${selectedEpic}`)
       .then(r => r.json())

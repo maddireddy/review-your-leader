@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 /**
@@ -11,7 +10,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

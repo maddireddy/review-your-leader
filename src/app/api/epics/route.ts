@@ -11,7 +11,7 @@ export async function GET() {
 
     if (error) throw error;
     return NextResponse.json({ epics: data });
-  } catch (err) {
+  } catch {
     // Fallback static data if Supabase not yet set up
     return NextResponse.json({
       epics: [

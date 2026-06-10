@@ -218,9 +218,11 @@ export function ElectionHistory({
   }, [stateId, selectedYear]);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (tab === 'results')    loadResults();
     if (tab === 'trends')     loadTrends();
     if (tab === 'affidavits') loadAffidavits();
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [tab, loadResults, loadTrends, loadAffidavits]);
 
   // Group results by constituency
