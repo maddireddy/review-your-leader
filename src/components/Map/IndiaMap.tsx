@@ -18,7 +18,7 @@ import { getTurnout, getTurnoutColor, TURNOUT_LEGEND } from '@/lib/turnoutData';
 const INDIA_STATES_TOPO = '/india-states.json';
 const INDIA_DISTRICTS_GEO = '/geojson/india-districts.json';
 
-type ViewMode = 'party' | 'turnout';
+type ViewMode = 'party' | 'turnout' | 'roads';
 
 interface TooltipState {
   x: number; y: number;
@@ -41,6 +41,7 @@ interface IndiaMapProps {
 }
 
 function getStateColor(stateId: string, isSelected: boolean, isHovered: boolean, mode: ViewMode) {
+  if (mode === 'roads') return isSelected ? '#818CF8' : '#1e293b';
   if (mode === 'turnout') {
     const base = getTurnoutColor(getTurnout(stateId));
     if (isSelected) return '#818CF8';
@@ -117,16 +118,39 @@ export function IndiaMap({ onStateSelect, onDistrictSelect, selectedState }: Ind
     <div ref={containerRef} className="relative w-full h-full select-none">
       {/* View mode toggle */}
       <div className="absolute top-4 left-4 z-20 flex gap-1 p-1 bg-slate-900/80 backdrop-blur-sm border border-slate-700/60 rounded-xl">
-        {(['party', 'turnout'] as ViewMode[]).map(m => (
+        {([
+          ['party', '🎗 Party'],
+          ['turnout', '🗳 Turnout'],
+          ['roads', '🛣 Roads'],
+        ] as [ViewMode, string][]).map(([m, label]) => (
           <button key={m} onClick={() => setViewMode(m)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               viewMode === m ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
             }`}
           >
-            {m === 'party' ? '🎗 Party' : '🗳 Turnout'}
+            {label}
           </button>
         ))}
       </div>
+
+      {/* Roads mode — OSM tile overlay iframe */}
+      {viewMode === 'roads' && (
+        <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden rounded-xl">
+          <iframe
+            src="https://www.openstreetmap.org/export/embed.html?bbox=67.0,6.0,97.4,37.6&layer=mapnik&marker=22.5,82.5"
+            className="w-full h-full border-0 opacity-80"
+            style={{ filter: 'hue-rotate(200deg) saturate(0.7) brightness(0.6)' }}
+            title="India Roads and Highways — OpenStreetMap"
+            loading="lazy"
+          />
+          <div className="absolute bottom-2 right-2 bg-slate-900/80 text-[10px] text-slate-400 px-2 py-1 rounded pointer-events-auto">
+            © <a href="https://openstreetmap.org" target="_blank" rel="noopener" className="underline">OpenStreetMap</a>
+          </div>
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-indigo-900/80 border border-indigo-500/40 text-[10px] text-indigo-200 px-3 py-1.5 rounded-xl pointer-events-none">
+            🛣 Roads &amp; Highways mode — scroll to zoom, drag to pan
+          </div>
+        </div>
+      )}
 
       {/* District layer indicator */}
       {showDistricts && (
@@ -344,7 +368,7 @@ export function IndiaMap({ onStateSelect, onDistrictSelect, selectedState }: Ind
         <div className="text-slate-400 font-semibold mb-2 uppercase tracking-wider text-[10px]">
           {viewMode === 'party' ? 'Ruling Party' : 'Voter Turnout 2024'}
         </div>
-        {(viewMode === 'party' ? MAP_LEGEND : TURNOUT_LEGEND).map(({ label, color }) => (
+        {(viewMode === 'roads' ? [] : viewMode === 'party' ? MAP_LEGEND : TURNOUT_LEGEND).map(({ label, color }) => (
           <div key={label} className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color + '70', border: `1px solid ${color}` }} />
             <span className="text-slate-300">{label}</span>

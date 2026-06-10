@@ -10,6 +10,7 @@ import { getPartyTheme, VALIDATION_COLORS } from '@/lib/colorSystem';
 import { NewsFeed } from '@/components/Civic/NewsFeed';
 import { PoliticianJourney } from '@/components/Profile/PoliticianJourney';
 import { ElectionHistory } from '@/components/Electoral/ElectionHistory';
+import { RepPhoto } from '@/components/UI/RepPhoto';
 
 interface StatePanelProps {
   state: StateInfo;
@@ -201,17 +202,15 @@ export function StatePanel({ state, onDistrictSelect }: StatePanelProps) {
         </div>
 
         <div className="flex items-center gap-3 mb-3">
-          {/* CM Avatar — uses dynamic party theme */}
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 relative"
-            style={{
-              background: theme.light,
-              border: `2px solid ${theme.border}`,
-              color: theme.text,
-              boxShadow: theme.glow,
-            }}
-          >
-            {cmName.split(' ').map(w => w[0]).join('').slice(0, 2)}
+          {/* CM Photo — Wikipedia photo via RepPhoto, falls back to initials */}
+          <div className="relative flex-shrink-0">
+            <RepPhoto
+              name={cmName}
+              party_short={state.ruling_party}
+              wikipedia_slug={state.cm_wikipedia_slug}
+              size={56}
+              showRing
+            />
             {liveCM?.isLive && (
               <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 border-2 border-slate-900 animate-pulse" />
             )}

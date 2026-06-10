@@ -383,6 +383,226 @@ const MANDALS: Record<string, MandalInfo[]> = {
     'Sholavandan','Melur','Thirumangalam','Usilampatti','Peraiyur',
     'Kalligudi','Sedapatti','Tirumangalam',
   ]),
+
+  // ── Karnataka ─────────────────────────────────────────────────────────────
+  'KA-BLR': mandals('KA-BLR', [
+    'Anekal','Bengaluru East','Bengaluru North','Bengaluru South','Bengaluru West',
+    'Byatarayanapura','Dasarahalli','Govindarajanagar','Hebbal','KR Puram',
+    'Mahadevapura','Pulakeshinagar','Rajajinagar','Shivajinagar','Yelahanka',
+    'Yeshwanthpura','Bommanahalli','BTM Layout','JP Nagar','Padmanabhanagar',
+  ]),
+  'KA-MYS': mandals('KA-MYS', [
+    'Mysuru North','Mysuru South','Chamaraja','Krishnaraja','Narasimharaja',
+    'Varuna','Nanjangud','Gundlupet','Hunsur','Piriyapatna',
+    'KR Nagar','Srirangapatna','TN Pura','HD Kote',
+  ]),
+  'KA-HUB': mandals('KA-HUB', [
+    'Hubli-Dharwad Central','Hubli-Dharwad East','Hubli-Dharwad West',
+    'Kundgol','Dharwad','Kalghatagi','Navalgund','Annigeri',
+    'Gadag-Betageri','Ron','Shirahatti','Mundargi','Nargund',
+  ]),
+  'KA-BLY': mandals('KA-BLY', [
+    'Ballari City','Ballari Rural','Hospet','Sandur','Kudligi',
+    'Hagaribommanahalli','Vijayanagara','Kampli','Hadagali','Harpanahalli',
+  ]),
+
+  // ── Maharashtra ───────────────────────────────────────────────────────────
+  'MH-MUM': mandals('MH-MUM', [
+    'Colaba','Malabar Hill','Worli','Dharavi','Kurla','Andheri East','Andheri West',
+    'Borivali','Kandivali East','Kandivali West','Malad East','Malad West',
+    'Goregaon','Jogeshwari East','Jogeshwari West','Versova','DN Nagar',
+    'Bandra East','Bandra West','Khar','Santacruz East','Santacruz West',
+    'Vile Parle East','Vile Parle West','Ghatkopar East','Ghatkopar West',
+    'Vikhroli','Mulund West','Bhandup West',
+  ]),
+  'MH-PUN': mandals('MH-PUN', [
+    'Kasba Peth','Pune Cantonment','Shivajinagar','Kothrud','Khadakwasla',
+    'Parvati','Hadapsar','Pune City','Vadgaon Sheri','Wanowrie',
+    'Sinhagad Road','Haveli','Indapur','Baramati','Purandar',
+    'Bhor','Maval','Chinchwad','Pimpri','Bhosari',
+  ]),
+  'MH-NAS': mandals('MH-NAS', [
+    'Nashik East','Nashik West','Nashik Central','Deolali','Sinnar',
+    'Niphad','Dindori','Kalwan','Chandwad','Malegaon Central',
+    'Malegaon Outer','Baglan','Igatpuri','Trimbakeshwar','Nandgaon','Manmad',
+  ]),
+  'MH-NGP': mandals('MH-NGP', [
+    'Nagpur South','Nagpur South West','Nagpur West','Nagpur Central','Nagpur East',
+    'Nagpur North','Ramtek','Umred','Katol','Savner',
+    'Hingna','Butibori','Kamptee','Parseoni',
+  ]),
+
+  // ── Uttar Pradesh ─────────────────────────────────────────────────────────
+  'UP-LKO': mandals('UP-LKO', [
+    'Lucknow Central','Lucknow East','Lucknow North','Lucknow West','Lucknow Cantonment',
+    'Sarojini Nagar','Bakshi Ka Talab','Mohan Lal Ganj','Malihabad','Kakori',
+    'Bijnaur','Chinhat','Gosaiganj','Sadar','Aliganj',
+  ]),
+  'UP-AGR': mandals('UP-AGR', [
+    'Agra City South','Agra City North','Agra Cantt','Etmadpur','Kheragarh',
+    'Fatehpur Sikri','Bah','Fatehabad','Achhnera','Deeg-Kumher',
+    'Bharatpur','Bayana','Dig',
+  ]),
+  'UP-VNS': mandals('UP-VNS', [
+    'Varanasi North','Varanasi South','Varanasi Cantonment','Rohania','Seva Puri',
+    'Pindra','Ajagara','Shivpur','Mughalsarai','Chandauli',
+    'Sakaldiha','Saiydapur','Bhadohi','Gyanpur','Aurai',
+  ]),
+  'UP-KNP': mandals('UP-KNP', [
+    'Kanpur Cantonment','Arya Nagar','Govindnagar','Sisamau','Kidwai Nagar',
+    'Kalyanpur','Maharajpur','Ghatampur','Bilhaur','Bhognipur',
+    'Rasulabad','Akbarpur-Raniya','Sandalpur',
+  ]),
+  'UP-PBH': mandals('UP-PBH', [
+    'Allahabad North','Allahabad South','Allahabad West','Phulpur','Soraon',
+    'Meja','Bara','Karchana','Chail','Handia',
+    'Manda','Karahal','Phaphamau',
+  ]),
+
+  // ── Rajasthan ─────────────────────────────────────────────────────────────
+  'RJ-JPR': mandals('RJ-JPR', [
+    'Amer','Bagru','Bassi','Civil Lines','Hawa Mahal','Jhotwara','Kishanganj',
+    'Malviya Nagar','Mansarovar','Malpura','Phagi','Sanganer','Shahpura','Sanganer',
+    'Sodala','Vidhyadhar Nagar','Chaksu',
+  ]),
+  'RJ-JDH': mandals('RJ-JDH', [
+    'Jodhpur City','Jodhpur Rural','Sardarpura','Sojat','Pali',
+    'Bilara','Bhopalgarh','Sumerpur','Rohat','Osian',
+    'Mandore','Pipar City','Luni','Phalsund',
+  ]),
+  'RJ-UDR': mandals('RJ-UDR', [
+    'Udaipur City','Udaipur Rural','Mavli','Vallabhnagar','Gogunda',
+    'Kherwara','Sarada','Dhariawad','Badgaon','Salumbar',
+    'Semari','Lasadiya','Fatehpur','Jhadol','Kotra',
+  ]),
+
+  // ── Gujarat ───────────────────────────────────────────────────────────────
+  'GJ-AMD': mandals('GJ-AMD', [
+    'Amraiwadi','Bapunagar','Dariapur','Danilimda','Ellisbridge','Ghatlodia',
+    'Jamalpur-Khadia','Maninagar','Naranpura','Naroda','Nikol','Sabarmati',
+    'Sardarnagar','Thakkarbapa Nagar','Vatva','Vejalpur',
+    'Daskroi','Sanand','Dholka','Bavla','Viramgam',
+  ]),
+  'GJ-SRT': mandals('GJ-SRT', [
+    'Surat East','Surat North','Surat West','Katargam','Limbayat','Majura',
+    'Olpad','Umarpada','Bardoli','Mangrol','Mandvi','Kamrej',
+    'Choryasi','Mahuva','Palsana',
+  ]),
+  'GJ-VDR': mandals('GJ-VDR', [
+    'Vadodara City','Sayajigunj','Fatehgunj','Akota','Raopura','Waghodia',
+    'Savli','Padra','Karjan','Dabhoi','Sinor',
+    'Bodeli','Sankheda','Chhota Udaipur',
+  ]),
+
+  // ── Kerala ────────────────────────────────────────────────────────────────
+  'KL-TVM': mandals('KL-TVM', [
+    'Varkala','Attingal','Chirayinkeezhu','Nedumangad','Kattakada',
+    'Kovalam','Parassala','Thiruvananthapuram','Kazhakuttam','Nemom',
+    'Aruvikkara','Vamanapuram','Aroor',
+  ]),
+  'KL-EKM': mandals('KL-EKM', [
+    'Aluva','Angamaly','Kalamassery','Paravur','Perumbavoor',
+    'Muvattupuzha','Kothamangalam','Kunnathunad','Thrippunithura',
+    'Ernakulam','Vypeen','Kochi','Thiruvankulam',
+  ]),
+  'KL-KKD': mandals('KL-KKD', [
+    'Kozhikode North','Kozhikode South','Beypore','Elathur','Kunnamangalam',
+    'Koduvally','Thiruvambady','Perambra','Balussery','Nadapuram',
+    'Quilandy','Vatakara','Koyilandy','Chelannur',
+  ]),
+
+  // ── Madhya Pradesh ────────────────────────────────────────────────────────
+  'MP-BPL': mandals('MP-BPL', [
+    'Bhopal North','Bhopal South','Berasia','Govindpura','Huzur',
+    'Narela','Bhojpur','Budhni','Icchawar','Nasrullaganj',
+    'Seehore','Ashta','Kurai',
+  ]),
+  'MP-IND': mandals('MP-IND', [
+    'Indore-1','Indore-2','Indore-3','Indore-4','Indore-5',
+    'Sanwer','Depalpur','Mahow','Mhow Cantonment','Rau',
+    'Manpur','Hatod','Sawer',
+  ]),
+  'MP-GWL': mandals('MP-GWL', [
+    'Gwalior','Gwalior East','Gwalior South','Gwalior West','Morena',
+    'Ambah','Bhind','Lahar','Mehgaon','Dabra',
+    'Pichhore','Sheopur','Karera',
+  ]),
+
+  // ── Bihar ─────────────────────────────────────────────────────────────────
+  'BR-PTN': mandals('BR-PTN', [
+    'Patna City','Bankipur','Kumhrar','Patna Sahib','Fatuha',
+    'Danapur','Maner','Phulwari','Masaurhi','Paliganj',
+    'Bikram','Bihta','Digha','Kankarbagh',
+  ]),
+  'BR-GAY': mandals('BR-GAY', [
+    'Gaya Town','Bodh Gaya','Sherghati','Gurua','Manpur',
+    'Tikari','Atri','Barachatti','Khizarsarai','Wazirganj',
+    'Imamganj','Dobhi','Amas',
+  ]),
+  'BR-MZF': mandals('BR-MZF', [
+    'Muzaffarpur','Kurhani','Gaighat','Aurai','Bochahan',
+    'Sahebganj','Minapur','Katra','Paroo','Mushari',
+    'Motipur','Siwan','Maharajganj',
+  ]),
+
+  // ── West Bengal ───────────────────────────────────────────────────────────
+  'WB-KOL': mandals('WB-KOL', [
+    'Ballygunge','Behala East','Behala West','Chowringhee','Entally',
+    'Jorasanko','Kasba','Kolkata Port','Maniktala','Rashbehari',
+    'Shyampukur','Sovabazar-Shyambazar','Tollygunge','Dum Dum',
+    'Beliaghata','Cossipore-Sinthi','Garden Reach',
+  ]),
+  'WB-HWR': mandals('WB-HWR', [
+    'Howrah North','Howrah South','Howrah Central','Howrah Madhya','Shyampur',
+    'Uluberia North','Uluberia South','Panchla','Jagatballavpur','Sankrail',
+    'Domjur','Bally','Amta','Bagnan','Udaynarayanpur',
+  ]),
+  'WB-DRJ': mandals('WB-DRJ', [
+    'Darjeeling','Kurseong','Kalimpong','Siliguri','Phansidewa',
+    'Naxalbari','Matigara-Naxalbari','Kharibari','Matigara',
+    'Jalpaiguri','Dhupguri','Mal','Rajganj','Matigarh',
+  ]),
+
+  // ── Punjab ────────────────────────────────────────────────────────────────
+  'PB-LDH': mandals('PB-LDH', [
+    'Ludhiana East','Ludhiana West','Ludhiana North','Ludhiana South','Ludhiana Central',
+    'Atam Nagar','Dakha','Jagraon','Samrala','Sahnewal',
+    'Khanna','Payal','Raikot','Machhiwara',
+  ]),
+  'PB-AMR': mandals('PB-AMR', [
+    'Amritsar North','Amritsar South','Amritsar East','Amritsar West','Amritsar Central',
+    'Attari','Jandiala','Ajnala','Majitha','Baba Bakala',
+    'Khadur Sahib','Fatehgarh Churian','Rajasansi',
+  ]),
+  'PB-CHD': mandals('PB-CHD', [
+    'Chandigarh','Mohali','Kharar','Ropar','Morinda',
+    'Fatehgarh Sahib','Sirhind-Fategarh','Bassi Pathana','Amloh',
+    'Patiala Rural','Patiala Urban','Nabha','Sanour',
+  ]),
+
+  // ── Odisha ────────────────────────────────────────────────────────────────
+  'OD-BBR': mandals('OD-BBR', [
+    'Bhubaneswar Central','Bhubaneswar North','Bhubaneswar Ekamra','Jatni',
+    'Bhubaneswar South','Brahmagiri','Puri','Pipili','Nimapara','Satyabadi',
+    'Chilika','Konark','Bhubaneswar','Khordha',
+  ]),
+  'OD-CUT': mandals('OD-CUT', [
+    'Cuttack City','Cuttack North','Cuttack South','Barabati-Cuttack',
+    'Choudwar-Cuttack','Athagarh','Salepur','Mahanga','Banki',
+    'Tigiria','Narasinghpur','Dampara','Jagatpur',
+  ]),
+
+  // ── Haryana ───────────────────────────────────────────────────────────────
+  'HR-GGN': mandals('HR-GGN', [
+    'Gurgaon','Badshahpur','Sohna','Pataudi','Bawl',
+    'Rewari','Bawal','Jatusana','Kosli','Dharuhera',
+    'Mahendragarh','Ateli','Narnaul','Nangal Chaudhary',
+  ]),
+  'HR-FAR': mandals('HR-FAR', [
+    'Faridabad NIT','Ballabhgarh','Badkhal','Prithla','Tigaon',
+    'Palwal','Hathin','Hodal','Punhana','Nuh',
+    'Ferozepur Jhirka','Mewat','Tauru','Pinhana',
+  ]),
 };
 
 
