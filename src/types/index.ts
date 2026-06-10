@@ -28,6 +28,8 @@ export interface Constituency {
   type: 'parliament' | 'assembly';
   reserved?: 'SC' | 'ST' | null;
   geojson_id: string;
+  current_mla?: string;
+  mla_party?: string;
 }
 
 export interface Representative {

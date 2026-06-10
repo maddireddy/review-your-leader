@@ -2,37 +2,12 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Landmark, ArrowRight, Vote, MapPin, ChevronDown, ChevronUp, Grid3x3 } from 'lucide-react';
+import { Landmark, ArrowRight, Vote, MapPin, ChevronDown, ChevronUp, Grid3x3, User } from 'lucide-react';
 import { DistrictInfo, getMandalsByDistrict } from '@/lib/districtData';
+import { getAssemblyByDistrict, hasRealData, getPartyColor } from '@/lib/constituencyData';
 import { Constituency } from '@/types';
 import { formatNumber } from '@/lib/utils';
 import { CONSTITUENCY_COLORS } from '@/lib/colorSystem';
-
-function getConstituencies(district: DistrictInfo): Constituency[] {
-  const lok: Constituency[] = Array.from({ length: district.lok_sabha_seats }, (_, i) => ({
-    id: `${district.id}-lok-${i}`,
-    district_id: district.id,
-    state_id: district.state_id,
-    name: i === 0 ? `${district.name} (Lok Sabha)` : `${district.name} - ${i + 1} (Lok Sabha)`,
-    type: 'parliament' as const,
-    geojson_id: `${district.id}-lok-${i}`,
-  }));
-
-  const vidhan: Constituency[] = Array.from({ length: Math.min(district.assembly_seats, 6) }, (_, i) => {
-    const suffixes = ['North', 'South', 'East', 'West', 'Central', 'Rural'];
-    return {
-      id: `${district.id}-vid-${i}`,
-      district_id: district.id,
-      state_id: district.state_id,
-      name: `${district.name} ${suffixes[i] || i + 1} (Vidhan Sabha)`,
-      type: 'assembly' as const,
-      reserved: i === 2 ? 'SC' : i === 4 ? 'ST' : undefined,
-      geojson_id: `${district.id}-vid-${i}`,
-    };
-  });
-
-  return [...lok, ...vidhan];
-}
 
 interface DistrictPanelProps {
   district: DistrictInfo;
@@ -40,14 +15,45 @@ interface DistrictPanelProps {
 }
 
 export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelProps) {
-  const constituencies = getConstituencies(district);
+  const realSeats = getAssemblyByDistrict(district.id);
+  const hasReal = hasRealData(district.id);
   const mandals = getMandalsByDistrict(district.id);
-  const parlConstituencies = constituencies.filter(c => c.type === 'parliament');
-  const assemblyConstituencies = constituencies.filter(c => c.type === 'assembly');
   const [showMandals, setShowMandals] = useState(false);
   const [showAllAssembly, setShowAllAssembly] = useState(false);
 
-  const visibleAssembly = showAllAssembly ? assemblyConstituencies : assemblyConstituencies.slice(0, 4);
+  // Build Lok Sabha placeholder seats (one per seat count)
+  const parlConstituencies: Constituency[] = Array.from({ length: district.lok_sabha_seats }, (_, i) => ({
+    id: `${district.id}-lok-${i}`,
+    district_id: district.id,
+    state_id: district.state_id,
+    name: district.lok_sabha_seats === 1 ? `${district.name}` : `${district.name} ${i + 1}`,
+    type: 'parliament' as const,
+    geojson_id: `${district.id}-lok-${i}`,
+  }));
+
+  // Use real assembly data if available, otherwise fall back to generic placeholders
+  const assemblyConstituencies: Constituency[] = hasReal
+    ? realSeats.map(s => ({
+        id: s.id,
+        district_id: s.district_id,
+        state_id: s.state_id,
+        name: s.name,
+        type: 'assembly' as const,
+        reserved: s.reserved,
+        geojson_id: s.id,
+        current_mla: s.current_mla,
+        mla_party: s.mla_party,
+      }))
+    : Array.from({ length: district.assembly_seats }, (_, i) => ({
+        id: `${district.id}-vid-${i}`,
+        district_id: district.id,
+        state_id: district.state_id,
+        name: `Constituency ${i + 1}`,
+        type: 'assembly' as const,
+        geojson_id: `${district.id}-vid-${i}`,
+      }));
+
+  const visibleAssembly = showAllAssembly ? assemblyConstituencies : assemblyConstituencies.slice(0, 6);
 
   return (
     <motion.div
@@ -95,7 +101,7 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
           <div className="flex items-center gap-2">
             <Grid3x3 className="w-4 h-4 text-green-400" />
             <span className="text-sm font-medium text-slate-300">
-              Mandals / Revenue Circles ({mandals.length})
+              Mandals / Revenue Circles ({district.mandals_count})
             </span>
           </div>
           {showMandals ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
@@ -109,20 +115,39 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="mt-2 grid grid-cols-2 gap-1.5">
-                {mandals.map((mandal, idx) => (
-                  <motion.div
-                    key={mandal.id}
-                    className="px-3 py-2 rounded-lg bg-slate-800/40 border border-slate-700/40 text-xs text-slate-300 flex items-center gap-1.5"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: idx * 0.02 }}
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-400/60 flex-shrink-0" />
-                    {mandal.name}
-                  </motion.div>
-                ))}
-              </div>
+              {/* If real seats have mandal lists, group by constituency */}
+              {hasReal && realSeats.some(s => s.mandals?.length) ? (
+                <div className="mt-2 space-y-2">
+                  {realSeats.filter(s => s.mandals?.length).map(seat => (
+                    <div key={seat.id} className="rounded-lg bg-slate-800/40 border border-slate-700/40 p-2">
+                      <div className="text-xs font-semibold text-green-400 mb-1.5">{seat.name} Constituency</div>
+                      <div className="grid grid-cols-2 gap-1">
+                        {seat.mandals!.map(m => (
+                          <div key={m} className="px-2 py-1 rounded bg-slate-800/60 text-xs text-slate-300 flex items-center gap-1">
+                            <div className="w-1 h-1 rounded-full bg-green-400/60 flex-shrink-0" />
+                            {m}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                  {mandals.map((mandal, idx) => (
+                    <motion.div
+                      key={mandal.id}
+                      className="px-3 py-2 rounded-lg bg-slate-800/40 border border-slate-700/40 text-xs text-slate-300 flex items-center gap-1.5"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: idx * 0.02 }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-400/60 flex-shrink-0" />
+                      {mandal.name}
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -172,49 +197,66 @@ export function DistrictPanel({ district, onConstituencySelect }: DistrictPanelP
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CONSTITUENCY_COLORS.assembly.primary }} />
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Vidhan Sabha · Assembly ({district.assembly_seats} seats)
+              {!hasReal && <span className="ml-1 text-amber-500/70 normal-case font-normal">(data loading)</span>}
             </h3>
           </div>
           <div className="space-y-2">
-            {visibleAssembly.map((c, idx) => (
-              <motion.button
-                key={c.id}
-                onClick={() => onConstituencySelect(c)}
-                className="w-full p-3 rounded-xl transition-all group flex items-center justify-between text-left hover:brightness-110"
-                style={{ background: CONSTITUENCY_COLORS.assembly.light, border: `1px solid ${CONSTITUENCY_COLORS.assembly.border}` }}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.04 }}
-                whileHover={{ scale: 1.01 }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: CONSTITUENCY_COLORS.assembly.light, border: `1px solid ${CONSTITUENCY_COLORS.assembly.border}` }}>
-                    <Vote className="w-4 h-4" style={{ color: CONSTITUENCY_COLORS.assembly.primary }} />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-white text-sm">{c.name}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs" style={{ color: CONSTITUENCY_COLORS.assembly.text }}>Assembly</span>
-                      {c.reserved && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/20">
-                          {c.reserved}
-                        </span>
+            {visibleAssembly.map((c, idx) => {
+              const partyColor = getPartyColor(c.mla_party);
+              return (
+                <motion.button
+                  key={c.id}
+                  onClick={() => onConstituencySelect(c)}
+                  className="w-full p-3 rounded-xl transition-all group flex items-center justify-between text-left hover:brightness-110"
+                  style={{ background: CONSTITUENCY_COLORS.assembly.light, border: `1px solid ${CONSTITUENCY_COLORS.assembly.border}` }}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.04 }}
+                  whileHover={{ scale: 1.01 }}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: CONSTITUENCY_COLORS.assembly.light, border: `1px solid ${CONSTITUENCY_COLORS.assembly.border}` }}>
+                      <Vote className="w-4 h-4" style={{ color: CONSTITUENCY_COLORS.assembly.primary }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-white text-sm">{c.name}</span>
+                        {c.reserved && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/20">
+                            {c.reserved}
+                          </span>
+                        )}
+                      </div>
+                      {c.current_mla ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <User className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                          <span className="text-xs text-slate-300 truncate">{c.current_mla}</span>
+                          {c.mla_party && (
+                            <span className="text-xs px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
+                              style={{ background: partyColor.bg + '22', color: partyColor.bg, border: `1px solid ${partyColor.bg}44` }}>
+                              {c.mla_party}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs mt-0.5" style={{ color: CONSTITUENCY_COLORS.assembly.text }}>Assembly Constituency</span>
                       )}
                     </div>
                   </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-indigo-400 transition-colors" />
-              </motion.button>
-            ))}
+                  <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-indigo-400 transition-colors flex-shrink-0 ml-2" />
+                </motion.button>
+              );
+            })}
           </div>
 
-          {assemblyConstituencies.length > 4 && (
+          {assemblyConstituencies.length > 6 && (
             <button
               onClick={() => setShowAllAssembly(!showAllAssembly)}
               className="w-full mt-2 py-2 rounded-xl border border-slate-700/50 text-xs text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1"
             >
               {showAllAssembly
                 ? <><ChevronUp className="w-3.5 h-3.5" /> Show less</>
-                : <><ChevronDown className="w-3.5 h-3.5" /> +{assemblyConstituencies.length - 4} more seats</>}
+                : <><ChevronDown className="w-3.5 h-3.5" /> +{assemblyConstituencies.length - 6} more seats</>}
             </button>
           )}
         </div>
