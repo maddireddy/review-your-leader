@@ -10,8 +10,8 @@
       "schedule": "30 20 * * *"
     },
     {
-      "path": "/api/cron/sync-electoral",
-      "schedule": "30 21 * * *"
+      "path": "/api/cron/data-agent",
+      "schedule": "0 21 * * *"
     }
   ],
   "env": {
